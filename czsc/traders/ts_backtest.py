@@ -76,6 +76,23 @@ class TraderPerformance:
         :param df_pairs:
         :return:
         """
+        if len(df_pairs) == 0:
+            info = {
+                "交易标的数量": 0,
+                "总体交易次数": 0,
+                "平均持仓天数": 0,
+
+                "平均单笔收益": 0,
+                "最大单笔收益": 0,
+                "最小单笔收益": 0,
+
+                "交易胜率": 0,
+                "累计盈亏比": 0,
+                "交易得分": 0,
+                "每自然日收益": 0,
+            }
+            return info
+
         win_pct = x_round(len(df_pairs[df_pairs['盈亏比例'] > 0]) / len(df_pairs), 4)
         df_gain = df_pairs[df_pairs['盈亏比例'] > 0]
         df_loss = df_pairs[df_pairs['盈亏比例'] <= 0]
@@ -98,6 +115,8 @@ class TraderPerformance:
             "累计盈亏比": gain_loss_rate,
             "交易得分": x_round(gain_loss_rate * win_pct, 4),
         }
+
+        info['每自然日收益'] = x_round(info['平均单笔收益'] / info['平均持仓天数'], 2)
         return info
 
     def agg_statistics(self, col: str):
@@ -121,6 +140,15 @@ class TraderPerformance:
         """写入基础信息"""
         df_pairs = self.df_pairs.copy()
         return self.get_pairs_statistics(df_pairs)
+
+    def agg_to_excel(self, file_xlsx):
+        """遍历聚合列，保存结果到 Excel 文件中"""
+        f = pd.ExcelWriter(file_xlsx)
+        for col in self.agg_columns:
+            df_ = self.agg_statistics(col)
+            df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
+        f.close()
+        print(f"聚合分析结果文件：{file_xlsx}")
 
 
 class TsStocksBacktest:
