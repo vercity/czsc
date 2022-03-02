@@ -16,6 +16,7 @@ from ..analyze import RawBar
 from ..enum import Freq
 from ..utils.cache import home_path
 
+from czsc.utils.bar_generator import BarGenerator
 
 # 数据频度 ：支持分钟(min)/日(D)/周(W)/月(M)K线，其中1min表示1分钟（类推1/5/15/30/60分钟）。
 # 对于分钟数据有600积分用户可以试用（请求2次），正式权限请在QQ群私信群主或积分管理员。
@@ -35,6 +36,7 @@ exchanges = {
     "XHKG": "港交所"
 }
 
+ts.set_token("")
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y%m%d"
 
@@ -64,7 +66,11 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     for i, record in enumerate(records):
         if freq == Freq.D:
             vol = int(record['vol']*100)
-            amount = int(record['amount']*1000)
+            if 'amount' in record.keys():
+                amount = int(record['amount'] * 1000)
+            else:
+                amount = record['avg_price'] * record['vol'] * 1000
+
         else:
             vol = int(record['vol'])
             amount = int(record['amount'])
@@ -108,6 +114,9 @@ def get_kline(ts_code: str,
 
     df = ts.pro_bar(ts_code=ts_code, adj=fq, asset=asset, freq=freq_map[freq],
                     start_date=start_date, end_date=end_date)
+    # #这些级别去掉 9:30 的数据
+    # if freq == Freq.F5 or freq == Freq.F15 or freq == Freq.F30 or freq == Freq.F60:
+    #     df = df[~df['trade_time'].str.contains('09:30:00')]
     bars = format_kline(df, freq)
     if bars and bars[-1].dt < pd.to_datetime(end_date) and len(bars) == 8000:
         print(f"获取K线数量达到8000根，数据获取到 {bars[-1].dt}，目标 end_date 为 {end_date}")
@@ -139,6 +148,7 @@ def get_ths_daily(ts_code='885760.TI',
         bars.append(bar)
     return bars
 
+
 def get_ths_members(exchange="A"):
     """获取同花顺概念板块成分股"""
     concepts = pro.ths_index(exchange=exchange)
@@ -147,7 +157,7 @@ def get_ths_members(exchange="A"):
     res = []
     for concept in tqdm(concepts):
         df = pro.ths_member(ts_code=concept['ts_code'],
-                               fields="ts_code,code,name,weight,in_date,out_date,is_new")
+                            fields="ts_code,code,name,weight,in_date,out_date,is_new")
         df['概念名称'] = concept['name']
         df['概念代码'] = concept['ts_code']
         res.append(df)
@@ -156,3 +166,90 @@ def get_ths_members(exchange="A"):
     res_df = pd.concat(res, ignore_index=True)
     return res_df
 
+def get_init_kg(ts_code: str,
+                end_dt: [str, datetime] = None,
+                max_count: int = 3000,
+                generator: [BarGenerator] = BarGenerator,
+                freqs=('1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'),
+                asset: str = 'E',
+                fq='qfq'):
+    """获取 ts_code 的初始化 kline generator"""
+    if end_dt:
+        end_dt = pd.to_datetime(end_dt)
+    else:
+        end_dt = datetime.now()
+
+    last_day = (end_dt - timedelta(days=1)).replace(hour=16, minute=0)
+
+    for freq in freqs:
+        if freq == Freq.F1.value:
+            start_dt = end_dt - timedelta(days=21)
+            fq = None
+        elif freq == Freq.F5.value:
+            start_dt = end_dt - timedelta(days=21 * 5)
+            fq = None
+        elif freq == Freq.F15.value:
+            start_dt = end_dt - timedelta(days=21 * 15)
+            fq = None
+        elif freq == Freq.F30.value:
+            start_dt = end_dt - timedelta(days=500)
+            fq = None
+        elif freq == Freq.F60.value:
+            start_dt = end_dt - timedelta(days=1000)
+            fq = None
+        elif freq == Freq.D.value:
+            start_dt = end_dt - timedelta(days=1500)
+            fq = "qfq"
+        else:
+            raise ValueError(freq.value)
+
+        bars = get_kline(ts_code=ts_code, asset=asset, start_date=start_dt, end_date=last_day,
+                         freq=freq_cn_map[freq], fq=fq)
+        kg.init_kline(freq, bars)
+        print(f"{ts_code} - {freq} - bars_len: {len(bars)} - kg_last_dt: "
+              f"{kg.get_kline(freq, 1)[-1].dt} - last_day: {last_day}")
+
+    bars = get_kline(ts_code=ts_code, asset=asset, start_date=last_day, end_date=end_dt, freq=Freq.F1, fq=None)
+    data = [x for x in bars if x.dt > last_day]
+
+    if data:
+        print(f"{ts_code}: 更新 kg 至 {end_dt.strftime(dt_fmt)}，共有{len(data)}行数据需要update")
+        for row in data:
+            kg.update(row)
+    return kg
+#
+#
+def get_all_stocks():
+    data = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
+    return data
+
+def get_all_cb():
+    df = pro.cb_basic()
+    return df
+
+def get_all_cbDaily(start_date='20150101', end_date='20150101'):
+    df = pro.cb_daily(start_date=start_date, end_date=end_date)
+    return df
+#
+#
+# class TsCzscTrader(CzscTrader):
+#     def __init__(self, ts_code, end_dt=None, max_count=2000, asset='E',
+#                  freqs=('1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线')):
+#         self.ts_code = ts_code
+#         self.asset = asset
+#         if end_dt:
+#             self.end_date = pd.to_datetime(end_dt)
+#         else:
+#             self.end_date = datetime.now()
+#         kg = get_init_kg(ts_code, end_dt, asset=asset, max_count=max_count, freqs=freqs)
+#         super(TsCzscTrader, self).__init__(kg, get_signals=get_default_signals, events=[])
+#
+#     def update_factors(self):
+#         """更新K线数据到最新状态"""
+#         bars = get_kline(ts_code=self.ts_code, asset=self.asset, start_date=self.end_dt, end_date=datetime.now(),
+#                          freq=Freq.F1, fq=None)
+#         if not bars or bars[-1].dt <= self.end_dt:
+#             return
+#         print(f"{self.ts_code}: 更新 kg 至 {datetime.now().strftime(dt_fmt)}，共有{len(bars)}行数据需要update")
+#         for bar in bars:
+#             self.check_operate(bar)

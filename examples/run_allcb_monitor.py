@@ -26,7 +26,6 @@ from czsc.cb.advanced_cb import CzscCBTrader
 from czsc.signals.signals import get_default_signals
 import akshare as ak
 
-
 # =======================================================================================================
 # 基础参数配置
 ct_path = "/Volumes/OuGuMore/Stock/cb"
@@ -576,19 +575,28 @@ def compare_time(startTime,endTime):
     return result
 
     # for oneDay in allTradingDates:
-    #     stock_zt_pool_em_df = ak.stock_em_zt_pool(date=oneDay)
+    #     stock_zt_pool_em_df = ak.stock_zt_pool_em(date=oneDay)
     #     pro.limit_list(trade_date='oneDay')
     #     for index, row in stock_zt_pool_em_df.iterrows():
     #         matchedCB = allCBs.loc[allCBs['stk_short_name'] == row['名称']]
     #         if matchedCB.empty == False:
     #             lastFeng = row['最后封板时间']
     #             if (int)(lastFeng) < 93000:
-    #             # if (int)(lastFeng) < 100000:
+    #                 # if (int)(lastFeng) < 100000:
     #                 print(str(oneDay) + ' ' + row['名称'] + ' ' + matchedCB['ts_code'])
     #                 print('----------')
 
 if __name__ == '__main__':
     # get_ths_members()
+    conceptsDic = {}
+    concepts = pro.ths_index(exchange="A")
+    for index, row in concepts.iterrows():
+        thisTypeConcept = {}
+        if row['type'] in conceptsDic.keys():
+            thisTypeConcept = conceptsDic[row['type']]
+        thisTypeConcept[row['ts_code']] = {"name" : row['name'], "count" : row['count'], 'list_date' : row['list_date']}
+        conceptsDic[row['type']] = thisTypeConcept
+
     df = pro.trade_cal(exchange='', start_date='20210215')
     allTradingDates = df.loc[df['is_open'] == 1]['cal_date'].values.tolist()
     moni_path = os.path.join(ct_path, "monitor")

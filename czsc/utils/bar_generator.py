@@ -28,6 +28,16 @@ def freq_end_time(dt: datetime, freq: Freq) -> datetime:
             delta_m = dt.minute % m
             if delta_m != 0:
                 dt += timedelta(minutes=m - delta_m)
+            else:
+                if dt.hour == 9 and dt.minute == 30:
+                    dt += timedelta(minutes=m)
+                elif dt.hour == 13 and dt.minute == 0:
+                    dt += timedelta(minutes=m)
+                # else:
+                #     a = 1
+                    # print(dt)
+                    # print("not allow")
+                # dt += timedelta(minutes=m)
             return dt
 
         else:

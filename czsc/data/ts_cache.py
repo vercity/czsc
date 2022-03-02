@@ -80,13 +80,14 @@ class TsDataCache:
             if self.verbose:
                 print(f"ths_daily: read cache {file_cache}")
         else:
-            kline = pro.ths_daily(ts_code=ts_code, start_date=self.sdt, end_date=self.edt,
-                                  fields='ts_code,trade_date,open,close,high,low,vol')
+            kline = pro.ths_daily(ts_code=ts_code, start_date=self.sdt, end_date=self.edt,)
+                                  # fields='ts_code,trade_date,open,close,high,low,vol')
             kline = kline.sort_values('trade_date', ignore_index=True)
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
             kline['dt'] = kline['trade_date']
 
-            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
+            # for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
+            for bar_number in (1, 2, 3, 5, 10, 20):
                 # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
@@ -171,7 +172,8 @@ class TsDataCache:
             kline['dt'] = kline['trade_date']
             kline['avg_price'] = kline['amount'] / kline['vol']
 
-            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
+            # for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
+            for bar_number in (1, 2, 3, 5, 10, 20):
                 # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
@@ -267,7 +269,8 @@ class TsDataCache:
                 for col in ['open', 'close', 'high', 'low']:
                     kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
-            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
+            # for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
+            for bar_number in (1, 2, 3, 5, 10, 20):
                 # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000

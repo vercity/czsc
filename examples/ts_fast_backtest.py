@@ -109,8 +109,8 @@ def strategy():
 
 
 if __name__ == '__main__':
-    data_path = r"D:\research\ts_data"
-    dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211211', verbose=True)
+    data_path = "/Volumes/OuGuMore/Stock/sensors"
+    dc = TsDataCache(data_path, sdt='2010-01-01', edt='20220208', verbose=True)
 
     # 对若干只股票进行买卖点快照验证
     ops, pairs_list, p_list = [], [], []
@@ -134,21 +134,21 @@ if __name__ == '__main__':
             traceback.print_exc()
 
     # 执行批量回测：对2014年之前上市的股票进行快速回测
-    ops, pairs_list, p_list = [], [], []
-    stocks = dc.stock_basic()
-    stocks = stocks[stocks['list_date'] < '2014-01-01']
-    for ts_code in stocks.ts_code.to_list():
-        try:
-            bars = dc.pro_bar_minutes(ts_code, dc.sdt, dc.edt, freq='15min', asset="E", adj='hfq', raw_bar=True)
-            operates, pairs, p = fast_back_test(bars, 30000, strategy)
-            print(p)
-            ops.extend(operates)
-            pairs_list.extend(pairs)
-            p_list.append(p)
-            f = pd.ExcelWriter(os.path.join(data_path, f"{strategy.__name__}.xlsx"))
-            pd.DataFrame(ops).to_excel(f, sheet_name="操作", index=False)
-            pd.DataFrame(pairs_list).to_excel(f, sheet_name="交易", index=False)
-            pd.DataFrame(p_list).to_excel(f, sheet_name="评估", index=False)
-            f.close()
-        except:
-            traceback.print_exc()
+    # ops, pairs_list, p_list = [], [], []
+    # stocks = dc.stock_basic()
+    # stocks = stocks[stocks['list_date'] < '2014-01-01']
+    # for ts_code in stocks.ts_code.to_list():
+    #     try:
+    #         bars = dc.pro_bar_minutes(ts_code, dc.sdt, dc.edt, freq='15min', asset="E", adj='hfq', raw_bar=True)
+    #         operates, pairs, p = fast_back_test(bars, 30000, strategy)
+    #         print(p)
+    #         ops.extend(operates)
+    #         pairs_list.extend(pairs)
+    #         p_list.append(p)
+    #         f = pd.ExcelWriter(os.path.join(data_path, f"{strategy.__name__}.xlsx"))
+    #         pd.DataFrame(ops).to_excel(f, sheet_name="操作", index=False)
+    #         pd.DataFrame(pairs_list).to_excel(f, sheet_name="交易", index=False)
+    #         pd.DataFrame(p_list).to_excel(f, sheet_name="评估", index=False)
+    #         f.close()
+    #     except:
+    #         traceback.print_exc()

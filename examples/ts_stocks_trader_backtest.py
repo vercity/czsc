@@ -18,8 +18,8 @@ pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_rows', 1000)
 pd.set_option('display.max_columns', 20)
 
-data_path = r"C:\ts_data"
-dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211216', verbose=False)
+data_path = "/Volumes/OuGuMore/Stock/sensors"
+dc = TsDataCache(data_path, sdt='2020-01-01', edt='20211216', verbose=False)
 
 
 if __name__ == '__main__':

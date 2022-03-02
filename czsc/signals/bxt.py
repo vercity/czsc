@@ -645,6 +645,7 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
     default_signals = [
         Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="其他", v2='其他', v3='其他'),
         Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒0笔", k3="潜在三买", v1="其他", v2='其他', v3='其他'),
     ]
     for signal in default_signals:
         s[signal.key] = signal.value
@@ -675,6 +676,31 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
 
         if "其他" not in v.value:
             s[v.key] = v.value
+
+        # 倒0笔潜在三买
+        if len(c.bi_list) >= 5:
+            if c.bi_list[-1].direction == Direction.Down:
+                gg = max(c.bi_list[-1].high, c.bi_list[-3].high)
+                zg = min(c.bi_list[-1].high, c.bi_list[-3].high)
+                zd = max(c.bi_list[-1].low, c.bi_list[-3].low)
+            else:
+                gg = max(c.bi_list[-2].high, c.bi_list[-4].high)
+                zg = min(c.bi_list[-2].high, c.bi_list[-4].high)
+                zd = max(c.bi_list[-2].low, c.bi_list[-4].low)
+
+            if zg > zd:
+                k1 = str(freq.value)
+                k2 = "倒0笔"
+                k3 = "潜在三买"
+                v = Signal(k1=k1, k2=k2, k3=k3, v1="构成中枢")
+                if gg * 1.1 > min([x.low for x in c.bars_raw[-3:]]) > zg > zd:
+                    v = Signal(k1=k1, k2=k2, k3=k3, v1="构成中枢", v2="近3K在中枢上沿附近")
+                    if max([x.high for x in c.bars_raw[-7:-3]]) > gg:
+                        v = Signal(k1=k1, k2=k2, k3=k3, v1="构成中枢", v2="近3K在中枢上沿附近", v3='近7K突破中枢GG')
+
+                if v and "其他" not in v.value:
+                    s[v.key] = v.value
+
     return s
 
 

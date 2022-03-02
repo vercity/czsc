@@ -102,10 +102,10 @@ def get_event():
 
 
 if __name__ == '__main__':
-    data_path = r'D:\research\ts_data'
-    dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211211')
-    sdt = "20190101"
-    edt = "20211114"
+    data_path = "/Volumes/OuGuMore/Stock/sensors"
+    dc = TsDataCache(data_path, sdt='2000-01-01', edt='20220223')
+    sdt = "20210223"
+    edt = "20220223"
     results_path = os.path.join(data_path, f"{get_event().name}_{sdt}_{edt}")
     sss = StocksDaySensor(results_path, sdt, edt, dc, get_signals, get_event)
     grid_params = {
@@ -114,7 +114,7 @@ if __name__ == '__main__':
         "min_total_mv": [5e5, 10e5],
         "max_count": [300],
     }
-    sss.grip_search(grid_params)
+    # sss.grip_search(grid_params)
 
     filter_params = [
         # 不加任何过滤

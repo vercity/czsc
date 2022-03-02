@@ -25,6 +25,9 @@ file_token = os.path.join(home_path, "jq.token")
 freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
                 "30min": "30m", "60min": '60m', "D": "1d", "W": '1w', "M": "1M"}
 
+freq_map_new = {"1分钟" : '1min', "5分钟" : '5min', "15分钟" : '15min', "30分钟" : '30min',
+            "60分钟" : '60min', "日线" : 'D', "周线" : 'W', "月线" : 'M'}
+
 freq_map = {'1min': Freq.F1, '5min': Freq.F5, '15min': Freq.F15, '30min': Freq.F30,
             '60min': Freq.F60, 'D': Freq.D, 'W': Freq.W, 'M': Freq.M}
 

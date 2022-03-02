@@ -38,10 +38,10 @@ def get_event():
 
 
 if __name__ == '__main__':
-    data_path = r'D:\research\ts_data'
-    dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211211')
-    sdt = "20180101"
-    edt = "20211114"
+    data_path = "/Volumes/OuGuMore/Stock/sensors"
+    dc = TsDataCache(data_path, sdt='2010-01-01', edt='20220225')
+    sdt = "20210601"
+    edt = "20220225"
     results_path = os.path.join(data_path, f"ths_concepts_{get_event().name}_{sdt}_{edt}")
     tcs = ThsConceptsSensor(results_path, sdt, edt, dc, get_signals, get_event, 'I')
     df_daily, df_detail = tcs.validate()

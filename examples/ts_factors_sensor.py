@@ -113,7 +113,7 @@ def analyze_signals_v2():
 
 
 if __name__ == '__main__':
-    data_path = r"D:\research\ts_data"
+    data_path = "/Volumes/OuGuMore/Stock/sensors"
     dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211211')
     sdt = "20180101"
     edt = "20211114"
