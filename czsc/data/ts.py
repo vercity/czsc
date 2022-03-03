@@ -80,7 +80,8 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
                      id=i, freq=freq, open=record['open'], close=record['close'],
                      high=record['high'], low=record['low'],
                      vol=vol,          # 成交量，单位：股
-                     amount=amount,    # 成交额，单位：元
+                     amount=amount,   # 成交额，单位：元
+                     pct_chg=record['pct_chg'] if 'pct_chg' in record.keys() else 0
                      )
         bars.append(bar)
     return bars

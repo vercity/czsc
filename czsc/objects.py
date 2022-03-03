@@ -28,6 +28,7 @@ class RawBar:
     high: [float, int]
     low: [float, int]
     vol: [float, int]
+    pct_chg: [float, int] = 0
     amount: [float, int] = None
 
 

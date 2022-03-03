@@ -588,29 +588,39 @@ def compare_time(startTime,endTime):
 
 if __name__ == '__main__':
     # get_ths_members()
-    conceptsDic = {}
+    conceptsDic = read_pkl(os.path.join(ct_path, "members"))
     concepts = pro.ths_index(exchange="A")
     for index, row in concepts.iterrows():
         thisTypeConcept = {}
         if row['type'] in conceptsDic.keys():
             thisTypeConcept = conceptsDic[row['type']]
         thisTypeConcept[row['ts_code']] = {"name" : row['name'], "count" : row['count'], 'list_date' : row['list_date']}
-        conceptsDic[row['type']] = thisTypeConcept
-
-    df = pro.trade_cal(exchange='', start_date='20210215')
-    allTradingDates = df.loc[df['is_open'] == 1]['cal_date'].values.tolist()
-    moni_path = os.path.join(ct_path, "monitor")
-
-    for oneDay in allTradingDates:
-        stock_zt_pool_em_df = pro.limit_list(trade_date=oneDay)
-        for index, row in stock_zt_pool_em_df.iterrows():
-            matchedCB = allCBs.loc[allCBs['stk_short_name'] == row['name']]
-            if matchedCB.empty == False:
-                strong = row['strth']
-                if strong > 99:
-                # if (int)(lastFeng) < 100000:
-                    print(str(oneDay) + ' ' + row['name'] + ' ' + matchedCB['ts_code'])
-                    print('----------')
+        time.sleep(0.3)
+        thisTypeConceptDetailStock = {}
+        detailDF = pro.ths_member(ts_code=row['ts_code'],
+                            fields="ts_code,code,name,weight,in_date,out_date,is_new")
+        for index2, row2 in detailDF.iterrows():
+            #判断是不是中国的股票
+            if row2['code'].endswith('.SH') or row2['code'].endswith('.SH'):
+                thisTypeConceptDetailStock[row2['code']] = row2['name']
+        if len(thisTypeConceptDetailStock.keys()) > 0:
+            thisTypeConcept[row['ts_code']]['stocks'] = thisTypeConceptDetailStock
+            conceptsDic[row['type']] = thisTypeConcept
+    save_pkl(conceptsDic, os.path.join(ct_path, "members"))
+    # df = pro.trade_cal(exchange='', start_date='20210215')
+    # allTradingDates = df.loc[df['is_open'] == 1]['cal_date'].values.tolist()
+    # moni_path = os.path.join(ct_path, "monitor")
+    #
+    # for oneDay in allTradingDates:
+    #     stock_zt_pool_em_df = pro.limit_list(trade_date=oneDay)
+    #     for index, row in stock_zt_pool_em_df.iterrows():
+    #         matchedCB = allCBs.loc[allCBs['stk_short_name'] == row['name']]
+    #         if matchedCB.empty == False:
+    #             strong = row['strth']
+    #             if strong > 99:
+    #             # if (int)(lastFeng) < 100000:
+    #                 print(str(oneDay) + ' ' + row['name'] + ' ' + matchedCB['ts_code'])
+    #                 print('----------')
 
 
         # allCBDaily = get_all_cbDaily(start_date=oneDay, end_date=oneDay)
