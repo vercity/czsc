@@ -3,28 +3,31 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/10/24 16:12
-describe: Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。单次缓存，多次使用，但是不做增量更新。
+describe:
+Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。
+单次缓存，多次使用，但是不做增量更新，适用于研究场景。
+数据缓存是一种用空间换时间的方法，需要有较大磁盘空间，跑全市场至少需要50GB以上。
 """
 import os.path
 import shutil
 import pandas as pd
 
 from .ts import *
+from .. import envs
 from ..utils import io
 
 
 class TsDataCache:
     """Tushare 数据缓存"""
-    def __init__(self, data_path, sdt, edt, verbose=False):
+    def __init__(self, data_path, sdt, edt):
         """
 
         :param data_path: 数据路径
         :param sdt: 缓存开始时间
         :param edt: 缓存结束时间
-        :param verbose: 是否显示详细信息
         """
         self.date_fmt = "%Y%m%d"
-        self.verbose = verbose
+        self.verbose = envs.get_verbose()
         self.sdt = pd.to_datetime(sdt).strftime(self.date_fmt)
         self.edt = pd.to_datetime(edt).strftime(self.date_fmt)
         self.data_path = data_path
@@ -52,7 +55,10 @@ class TsDataCache:
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
             'hk_hold', 'cctv_news', 'daily_basic', 'index_weight',
-            'adj_factor', 'pro_bar_minutes', 'limit_list'
+            'adj_factor', 'pro_bar_minutes', 'limit_list', 'bak_basic',
+
+            # CZSC加工缓存
+            "stocks_daily_bars", "stocks_daily_basic", "stocks_daily_bak"
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -253,21 +259,23 @@ class TsDataCache:
             if asset == 'E' and adj and adj == 'qfq':
                 # 前复权	= 当日收盘价 × 当日复权因子 / 最新复权因子
                 factor = self.adj_factor(ts_code)
-                factor = factor.sort_values('trade_date', ignore_index=True)
-                latest_factor = factor.iloc[-1]['adj_factor']
-                kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
-                adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
-                for col in ['open', 'close', 'high', 'low']:
-                    kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
+                if not factor.empty:
+                    factor = factor.sort_values('trade_date', ignore_index=True)
+                    latest_factor = factor.iloc[-1]['adj_factor']
+                    kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
+                    adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
+                    for col in ['open', 'close', 'high', 'low']:
+                        kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
 
             if asset == 'E' and adj and adj == 'hfq':
                 # 后复权	= 当日收盘价 × 当日复权因子
                 factor = self.adj_factor(ts_code)
-                factor = factor.sort_values('trade_date', ignore_index=True)
-                kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
-                adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
-                for col in ['open', 'close', 'high', 'low']:
-                    kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
+                if not factor.empty:
+                    factor = factor.sort_values('trade_date', ignore_index=True)
+                    kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
+                    adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
+                    for col in ['open', 'close', 'high', 'low']:
+                        kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
             # for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
             for bar_number in (1, 2, 3, 5, 10, 20):
@@ -418,7 +426,29 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
-    # ------------------------------------CZSC 加工接口----------------------------------------------
+    def bak_basic(self, trade_date: str = None, ts_code: str = None):
+        """https://tushare.pro/document/2?doc_id=262
+
+        :param trade_date: 交易日期
+        :param ts_code: 标的代码
+        :return:
+        """
+        assert trade_date or ts_code, "请至少设定一个参数，trade_date 或 ts_code"
+
+        if trade_date:
+            trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
+
+        cache_path = self.api_path_map['bak_basic']
+        file_cache = os.path.join(cache_path, f"bak_basic_{trade_date}_{ts_code}.pkl")
+
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            df = pro.bak_basic(trade_date=trade_date, ts_code=ts_code)
+            io.save_pkl(df, file_cache)
+        return df
+
+    # ------------------------------------以下是 CZSC 加工接口----------------------------------------------
 
     def get_all_ths_members(self, exchange="A", type_="N"):
         """获取同花顺A股全部概念列表"""
@@ -487,5 +517,109 @@ class TsDataCache:
 
         trade_dates = [x for x in trade_cal['cal_date'] if edt >= x >= sdt]
         return trade_dates
+
+    def stocks_daily_bars(self, sdt="20190101", edt="20220218", adj='hfq'):
+        """读取A股全部历史日线
+
+        :param sdt: 开始日期
+        :param edt: 结束日期
+        :param adj: 复权类型
+        :return:
+        """
+        cache_path = self.api_path_map['stocks_daily_bars']
+        file_cache = os.path.join(cache_path, f"stocks_daily_bars_{sdt}_{edt}_{adj}.pkl")
+        if os.path.exists(file_cache):
+            df = pd.read_pickle(file_cache)
+            return df
+
+        stocks = self.stock_basic()
+
+        def __is_one_line(row_):
+            """判断 row_ 是否是一字板"""
+            if row_['open'] == row_['close'] == \
+                    row_['high'] == row_['low'] and row_['b1b']:
+                if row_['b1b'] > 500:
+                    return 1
+                if row_['b1b'] < -500:
+                    return -1
+            return 0
+
+        results = []
+        for row in tqdm(stocks.to_dict('records'), desc="stocks_daily_bars"):
+            ts_code = row['ts_code']
+            try:
+                n_bars: pd.DataFrame = self.pro_bar(ts_code, sdt, edt, freq='D', asset='E', adj=adj, raw_bar=False)
+                # 计算下期一字板
+                n_bars['当期一字板'] = n_bars.apply(__is_one_line, axis=1)
+                n_bars['下期一字板'] = n_bars['当期一字板'].shift(-1)
+                results.append(n_bars)
+            except:
+                continue
+        df = pd.concat(results, ignore_index=True)
+
+        # 涨跌停判断
+        def __is_zdt(row_):
+            if row_['close'] == row_['high']:
+                return 1
+            elif row_['close'] == row_['low']:
+                return -1
+            else:
+                return 0
+
+        df['zdt'] = df.apply(__is_zdt, axis=1)
+        float_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('float')]
+        df[float_cols] = df[float_cols].astype('float32')
+
+        df.to_pickle(file_cache)
+        return df
+
+    def stocks_daily_basic(self, sdt: str, edt: str):
+        """读取A股全部历史每日指标
+
+        :param sdt: 开始日期
+        :param edt: 结束日期
+        :return:
+        """
+        cache_path = self.api_path_map['stocks_daily_basic']
+        file_cache = os.path.join(cache_path, f"stocks_daily_basic_{sdt}_{edt}.pkl")
+        if os.path.exists(file_cache):
+            df = pd.read_pickle(file_cache)
+            return df
+
+        ts_codes = self.stock_basic().ts_code.to_list()
+        results = []
+        for ts_code in tqdm(ts_codes, desc='stocks_daily_basic'):
+            df1 = self.daily_basic(ts_code, sdt, edt)
+            results.append(df1)
+        dfb = pd.concat(results, ignore_index=True)
+        dfb['dt'] = pd.to_datetime(dfb['trade_date'])
+        dfb.to_pickle(file_cache)
+        return dfb
+
+    def stocks_daily_bak(self, sdt: str, edt: str):
+        """读取A股全部历史 bak_basic
+
+        :param sdt: 开始日期
+        :param edt: 结束日期
+        :return:
+        """
+        cache_path = self.api_path_map['stocks_daily_bak']
+        file_cache = os.path.join(cache_path, f"stocks_daily_bak_{sdt}_{edt}.pkl")
+        if os.path.exists(file_cache):
+            df = pd.read_pickle(file_cache)
+            return df
+
+        dates = self.get_dates_span(sdt, edt, is_open=True)
+        results = []
+        for d in tqdm(dates, desc='stocks_daily_bak'):
+            df1 = self.bak_basic(d)
+            results.append(df1)
+        dfb = pd.concat(results, ignore_index=True)
+        dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
+        dfb = dfb[['trade_date', 'ts_code', 'name']]
+        dfb['is_st'] = dfb['name'].str.contains('ST')
+        dfb.to_pickle(file_cache)
+        return dfb
+
 
 

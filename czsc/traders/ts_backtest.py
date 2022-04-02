@@ -16,7 +16,7 @@ from typing import Callable
 
 from ..data.ts_cache import TsDataCache
 from ..traders.utils import trader_fast_backtest, freq_cn2ts
-from ..utils import WordWriter, x_round
+from ..utils import WordWriter, x_round, io
 
 
 def read_raw_results(raw_path, trade_dir="long"):
@@ -45,24 +45,17 @@ def read_raw_results(raw_path, trade_dir="long"):
 
 class TraderPerformance:
     """择时交易效果评估"""
-    def __init__(self, df_pairs: pd.DataFrame,):
+
+    def __init__(self, df_pairs: pd.DataFrame, ):
         """
 
         :param df_pairs: 全部交易对
         """
-        df_pairs['开仓年'] = df_pairs['开仓时间'].apply(lambda x: x.strftime("%Y年"))
-        df_pairs['平仓年'] = df_pairs['平仓时间'].apply(lambda x: x.strftime("%Y年"))
-
-        df_pairs['开仓月'] = df_pairs['开仓时间'].apply(lambda x: x.strftime("%Y年%m月"))
-        df_pairs['平仓月'] = df_pairs['平仓时间'].apply(lambda x: x.strftime("%Y年%m月"))
-
-        df_pairs['开仓周'] = df_pairs['开仓时间'].apply(
-            lambda x: f"{x.year}年第{x.weekofyear}周" if x.weekofyear >= 10 else f"{x.year}年第0{x.weekofyear}周")
-        df_pairs['平仓周'] = df_pairs['平仓时间'].apply(
-            lambda x: f"{x.year}年第{x.weekofyear}周" if x.weekofyear >= 10 else f"{x.year}年第0{x.weekofyear}周")
-
-        df_pairs['开仓日'] = df_pairs['开仓时间'].apply(lambda x: x.strftime("%Y-%m-%d"))
-        df_pairs['平仓日'] = df_pairs['平仓时间'].apply(lambda x: x.strftime("%Y-%m-%d"))
+        time_convert = lambda x: (x.strftime("%Y年"), x.strftime("%Y年%m月"), x.strftime("%Y-%m-%d"),
+                                  f"{x.year}年第{x.weekofyear}周" if x.weekofyear >= 10 else f"{x.year}年第0{x.weekofyear}周",
+                                  )
+        df_pairs[['开仓年', '开仓月', '开仓日', '开仓周']] = list(df_pairs['开仓时间'].apply(time_convert))
+        df_pairs[['平仓年', '平仓月', '平仓日', '平仓周']] = list(df_pairs['平仓时间'].apply(time_convert))
 
         self.df_pairs = df_pairs
         # 指定哪些列可以用来进行聚合分析
@@ -188,28 +181,36 @@ class TsStocksBacktest:
         stocks = self.dc.stock_basic()
         stocks_ = stocks[stocks['list_date'] < '2010-01-01'].ts_code.to_list()
         self.stocks_map = {
-            "index": ['000905.SH', '000016.SH', '000300.SH'],
+            "index": ['000905.SH', '000016.SH', '000300.SH', '000001.SH', '000852.SH',
+                      '399001.SZ', '399006.SZ', '399376.SZ', '399377.SZ', '399317.SZ', '399303.SZ'],
             "stock": stocks.ts_code.to_list(),
             "check": ['000001.SZ'],
             "train": stocks_[:200],
             "valid": stocks_[200:600],
+            "etfs": ['512880.SH', '518880.SH', '515880.SH', '513050.SH', '512690.SH',
+                     '512660.SH', '512400.SH', '512010.SH', '512000.SH', '510900.SH',
+                     '510300.SH', '510500.SH', '510050.SH', '159992.SZ', '159985.SZ',
+                     '159981.SZ', '159949.SZ', '159915.SZ'],
         }
 
     def analyze_results(self, step, trade_dir="long"):
         res_path = self.res_path
         raw_path = os.path.join(res_path, f'raw_{step}')
         df_ops, df_pairs, df_p = read_raw_results(raw_path, trade_dir)
+        s_name = self.strategy.__name__
 
-        df_ops.to_csv(os.path.join(res_path, f"{self.strategy.__name__}_{step}_{trade_dir}_operates.csv"), index=False)
-        df_pairs.to_excel(os.path.join(res_path, f"{self.strategy.__name__}_{step}_{trade_dir}_pairs.xlsx"), index=False)
+        df_ops.to_csv(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_operates.csv"), index=False)
+        df_pairs.to_excel(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_pairs.xlsx"),
+                          index=False)
 
-        f = pd.ExcelWriter(os.path.join(res_path, f"{self.strategy.__name__}_{step}_{trade_dir}_performance.xlsx"))
+        f = pd.ExcelWriter(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_performance.xlsx"))
         df_p.to_excel(f, sheet_name="评估", index=False)
         tp = TraderPerformance(df_pairs)
         for col in tp.agg_columns:
             df_ = tp.agg_statistics(col)
             df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
         f.close()
+        print(f"{s_name} - {step} - {trade_dir}: {tp.basic_info}")
 
     def batch_backtest(self, step):
         """批量回测
@@ -260,7 +261,8 @@ class TsStocksBacktest:
 
             try:
                 file_res = os.path.join(res_path, f"raw_{step}/{ts_code}.xlsx")
-                if os.path.exists(file_res):
+                file_signals = os.path.join(res_path, f"raw_{step}/{ts_code}_signals.pkl")
+                if os.path.exists(file_res) and os.path.exists(file_signals):
                     print(f"exits: {file_res}")
                     continue
 
@@ -272,15 +274,25 @@ class TsStocksBacktest:
                                       asset=asset, adj='hfq', raw_bar=True)
                 res = trader_fast_backtest(bars, init_n, strategy, html_path, signals_n=signals_n)
 
+                # 保存信号结果
+                dfs = pd.DataFrame(res['signals'])
+                c_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('object')]
+                dfs[c_cols] = dfs[c_cols].astype('category')
+                float_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('float')]
+                dfs[float_cols] = dfs[float_cols].astype('float32')
+                dfs.to_pickle(file_signals, protocol=4)
+
                 f = pd.ExcelWriter(file_res)
                 if res.get('long_performance', None):
                     print(f"{strategy.__name__} long_performance: {res['long_performance']}")
+                    pd.DataFrame(res['long_holds']).to_excel(f, sheet_name="long_holds", index=False)
                     pd.DataFrame(res['long_operates']).to_excel(f, sheet_name="long_operates", index=False)
                     pd.DataFrame(res['long_pairs']).to_excel(f, sheet_name="long_pairs", index=False)
                     pd.DataFrame([res['long_performance']]).to_excel(f, sheet_name="long_performance", index=False)
 
                 if res.get('short_performance', None):
                     print(f"{strategy.__name__} short_performance: {res['short_performance']}")
+                    pd.DataFrame(res['short_holds']).to_excel(f, sheet_name="short_holds", index=False)
                     pd.DataFrame(res['short_operates']).to_excel(f, sheet_name="short_operates", index=False)
                     pd.DataFrame(res['short_pairs']).to_excel(f, sheet_name="short_pairs", index=False)
                     pd.DataFrame([res['short_performance']]).to_excel(f, sheet_name="short_performance", index=False)
@@ -294,5 +306,3 @@ class TsStocksBacktest:
         if tactic.get('short_events', None):
             self.analyze_results(step, 'short')
         print(f"results saved into {self.res_path}")
-
-

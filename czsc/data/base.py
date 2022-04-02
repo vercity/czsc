@@ -6,19 +6,12 @@ create_dt: 2022/2/24 16:17
 describe: 基础工具
 """
 
+freq_cn2ts = {"1分钟": "1min", "5分钟": "5min", "15分钟": "15min", "30分钟": "30min",
+              '60分钟': "60min", "日线": "D", "周线": "W", "月线": "M"}
+freq_ts2cn = {v: k for k, v in freq_cn2ts.items()}
 
-freq_map = {
-    "1min": "1分钟",
-    "5min": "5分钟",
-    "15min": "15分钟",
-    "30min": "30分钟",
-    "60min": "60分钟",
-    "D": "日线",
-    "W": "周线",
-    "M": "月线",
-}
-
-freq_inv = {v: k for k, v in freq_map.items()}
+freq_cn2gm = {"1分钟": "1m", "5分钟": "5min", "15分钟": "15min", "30分钟": "30min",
+              '60分钟': "60min", "日线": "D", "周线": "W", "月线": "M"}
 
 
 def jq_symbol_to_gm(symbol: str) -> str:
@@ -137,16 +130,25 @@ def ts_symbol_to_tdx(symbol):
     return symbol
 
 
-def save_ts_to_ebk(ts_codes, file_ebk):
-    """将 tushare 股票代码列表保存到 EBK 文件，用来导入标的到同花顺、通达信软件中
+def save_symbols_to_ebk(symbols, file_ebk, source='ts'):
+    """将股票代码列表保存到 EBK 文件，用来导入标的到同花顺、通达信软件中
 
-    :param ts_codes:
-    :param file_ebk:
+    :param symbols: 股票代码列表
+    :param file_ebk: EBK结果文件
+    :param source: 代码格式
     :return:
     """
-    tdx_symbols = [ts_symbol_to_tdx(ts_code) for ts_code in ts_codes]
+    source = source.lower()
+    if source == 'ts':
+        symbol_to_tdx = ts_symbol_to_tdx
+    elif source == 'jq':
+        symbol_to_tdx = jq_symbol_to_tdx
+    elif source == 'gm':
+        symbol_to_tdx = gm_symbol_to_tdx
+    else:
+        raise ValueError
+
+    tdx_symbols = [symbol_to_tdx(ts_code) for ts_code in symbols]
     with open(file_ebk, encoding='utf-8', mode='w') as f:
         f.write("\n".join(tdx_symbols))
-
-
 

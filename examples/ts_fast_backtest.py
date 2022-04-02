@@ -9,146 +9,79 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
 import os
-import traceback
 import pandas as pd
-from czsc.data.ts_cache import TsDataCache
-from czsc.analyze import CZSC, OrderedDict
-from czsc.objects import Factor, Signal, Event, Operate
-from czsc.signals.bxt import get_s_three_bi
-from czsc.signals.ta import get_s_macd
-from czsc.traders.utils import fast_back_test
+from tqdm import tqdm
+from czsc.data.base import freq_cn2ts
+from czsc.sensors.utils import read_cached_signals, SignalsPerformance
+from czsc.traders.ts_backtest import TsDataCache, TsStocksBacktest
+from examples import tactics
+
+os.environ['czsc_verbose'] = "0"     # 是否输出详细执行信息，0 不输出，1 输出
+
+pd.set_option('mode.chained_assignment', None)
+pd.set_option('display.max_rows', 1000)
+pd.set_option('display.max_columns', 20)
+
+data_path = r"C:\ts_data"
+dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-02-18')
+strategy = tactics.trader_strategy_a
+freq = freq_cn2ts[strategy()['base_freq']]
 
 
-def strategy():
-    """股票15分钟策略的交易事件"""
-    base_freq = '15分钟'
+def run_backtest(step_seq=('check', 'index', 'etfs', 'train', 'valid', 'stock')):
+    """
 
-    freqs = ['30分钟', '60分钟']
+    :param step_seq: 回测执行顺序
+    :return:
+    """
+    tsb = TsStocksBacktest(dc, strategy, sdt='20140101', edt="20211216", init_n=1000*4)
+    for step in step_seq:
+        tsb.batch_backtest(step.lower())
 
-    states_pos = {
-        'hold_long_a': 0.5,
-        'hold_long_b': 0.8,
-        'hold_long_c': 1.0,
-    }
 
-    def get_signals(c: CZSC) -> OrderedDict:
-        s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
-        s.update(get_s_three_bi(c, di=1))
-        s.update(get_s_macd(c, di=1))
-        return s
+def analyze_tactic_signals(path: str, step: str = None):
+    """分析策略中信号的基础表现
 
-    def get_events():
-        events = [
-            Event(name="开多", operate=Operate.LO, factors=[
-                Factor(name="60分钟三笔买", signals_all=[
-                    Signal("60分钟_倒1K_DIF多空_多头_任意_任意_0"),
-                    Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
-                ], signals_any=[
-                    Signal("60分钟_倒1笔_三笔形态_向下扩张_任意_任意_0"),
-                    Signal("60分钟_倒1笔_三笔形态_向下盘背_任意_任意_0"),
-                    Signal("60分钟_倒1笔_三笔形态_向下无背_任意_任意_0"),
-                ]),
-            ]),
+    :param path: 信号路径
+    :param step:
+    :return:
+    """
+    step = 'all' if not step else step
+    file_dfs = os.path.join(path, f"{step}_dfs.pkl")
+    signals_pat = fr"{path}\raw_{step}\*_signals.pkl" if step != 'all' else fr"{path}\raw_*\*_signals.pkl"
 
-            Event(name="加多1", operate=Operate.LA1, factors=[
-                Factor(name="30分钟三笔买", signals_all=[
-                    Signal("60分钟_倒1K_DIF多空_多头_任意_任意_0"),
-                    Signal("30分钟_倒1K_MACD多空_多头_任意_任意_0"),
-                ], signals_any=[
-                    Signal("30分钟_倒1笔_三笔形态_向下扩张_任意_任意_0"),
-                    Signal("30分钟_倒1笔_三笔形态_向下盘背_任意_任意_0"),
-                    Signal("30分钟_倒1笔_三笔形态_向下无背_任意_任意_0"),
-                ]),
-            ]),
+    if not os.path.exists(file_dfs):
+        dfs = read_cached_signals(file_dfs, signals_pat)
+        asset = "I" if step == 'index' else "E"
+        results = []
+        for symbol, dfg in tqdm(dfs.groupby('symbol'), desc='add nbar'):
+            dfk = dc.pro_bar_minutes(symbol, sdt=dfg['dt'].min(), edt=dfg['dt'].max(),
+                                     freq=freq, asset=asset, adj='hfq', raw_bar=False)
+            dfk_cols = ['dt'] + [x for x in dfk.columns if x not in dfs.columns]
+            dfk = dfk[dfk_cols]
+            dfs_ = dfg.merge(dfk, on='dt', how='left')
+            results.append(dfs_)
 
-            Event(name="加多2", operate=Operate.LA2, factors=[
-                Factor(name="15分钟三笔买", signals_all=[
-                    Signal("60分钟_倒1K_DIF多空_多头_任意_任意_0"),
-                    Signal("15分钟_倒1K_MACD多空_多头_任意_任意_0"),
-                ], signals_any=[
-                    Signal("15分钟_倒1笔_三笔形态_向下扩张_任意_任意_0"),
-                    Signal("15分钟_倒1笔_三笔形态_向下盘背_任意_任意_0"),
-                    Signal("15分钟_倒1笔_三笔形态_向下无背_任意_任意_0"),
-                ]),
-            ]),
+        dfs = pd.concat(results, ignore_index=True)
+        c_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('object')]
+        dfs[c_cols] = dfs[c_cols].astype('category')
+        float_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('float')]
+        dfs[float_cols] = dfs[float_cols].astype('float32')
+        dfs.to_pickle(file_dfs, protocol=4)
+    else:
+        dfs = pd.read_pickle(file_dfs)
 
-            Event(name="减多1", operate=Operate.LR1, factors=[
-                Factor(name="15分钟三笔卖", signals_all=[
-                    Signal("15分钟_倒1K_MACD多空_空头_任意_任意_0"),
-                ], signals_any=[
-                    Signal("15分钟_倒1笔_三笔形态_向上无背_任意_任意_0"),
-                    Signal("15分钟_倒1笔_三笔形态_向上扩张_任意_任意_0"),
-                ]),
-            ]),
-
-            Event(name="减多2", operate=Operate.LR2, factors=[
-                Factor(name="30分钟三笔卖", signals_all=[
-                    Signal("30分钟_倒1K_MACD多空_空头_任意_任意_0"),
-                ], signals_any=[
-                    Signal("30分钟_倒1笔_三笔形态_向上无背_任意_任意_0"),
-                    Signal("30分钟_倒1笔_三笔形态_向上扩张_任意_任意_0"),
-                ]),
-            ]),
-
-            Event(name="平多", operate=Operate.LE, factors=[
-                Factor(name="60分钟三笔卖", signals_all=[
-                    Signal("60分钟_倒1K_MACD多空_空头_任意_任意_0"),
-                ], signals_any=[
-                    Signal("60分钟_倒1笔_三笔形态_向上无背_任意_任意_0"),
-                    Signal("60分钟_倒1笔_三笔形态_向上扩张_任意_任意_0"),
-                ]),
-
-                Factor(name="60分钟DIF空头", signals_all=[
-                    Signal("60分钟_倒1K_DIF多空_空头_任意_任意_0"),
-                ]),
-            ]),
-        ]
-        return events
-
-    return base_freq, freqs, states_pos, get_signals, get_events
+    signal_cols = [x for x in dfs.columns if len(x.split("_")) == 3]
+    for key in signal_cols:
+        file_xlsx = os.path.join(path, f"{step}_{key.replace(':', '')}.xlsx")
+        sp = SignalsPerformance(dfs, keys=[key], dc=dc)
+        sp.report(file_xlsx)
+        print(f"{key} performance saved into {file_xlsx}")
 
 
 if __name__ == '__main__':
-    data_path = "/Volumes/OuGuMore/Stock/sensors"
-    dc = TsDataCache(data_path, sdt='2010-01-01', edt='20220208', verbose=True)
+    run_backtest(step_seq=('index', 'train'))
+    # run_backtest(step_seq=('check', 'index', 'train'))
+    # run_backtest(step_seq=('check', 'index', 'train', 'valid'))
+    # analyze_tactic_signals(path=r"C:\ts_data\trader_stocks_v1_e_01", step='index')
 
-    # 对若干只股票进行买卖点快照验证
-    ops, pairs_list, p_list = [], [], []
-    stocks = ['000001.SZ', '300033.SZ']
-    for ts_code in stocks:
-        html_path = os.path.join(data_path, ts_code)
-        os.makedirs(html_path, exist_ok=True)
-        try:
-            bars = dc.pro_bar_minutes(ts_code, dc.sdt, dc.edt, freq='15min', asset="E", adj='hfq', raw_bar=True)
-            operates, pairs, p = fast_back_test(bars, 30000, strategy, html_path)
-            print(p)
-            ops.extend(operates)
-            pairs_list.extend(pairs)
-            p_list.append(p)
-            f = pd.ExcelWriter(os.path.join(data_path, f"{strategy.__name__}_with_snapshots.xlsx"))
-            pd.DataFrame(ops).to_excel(f, sheet_name="操作", index=False)
-            pd.DataFrame(pairs_list).to_excel(f, sheet_name="交易", index=False)
-            pd.DataFrame(p_list).to_excel(f, sheet_name="评估", index=False)
-            f.close()
-        except:
-            traceback.print_exc()
-
-    # 执行批量回测：对2014年之前上市的股票进行快速回测
-    # ops, pairs_list, p_list = [], [], []
-    # stocks = dc.stock_basic()
-    # stocks = stocks[stocks['list_date'] < '2014-01-01']
-    # for ts_code in stocks.ts_code.to_list():
-    #     try:
-    #         bars = dc.pro_bar_minutes(ts_code, dc.sdt, dc.edt, freq='15min', asset="E", adj='hfq', raw_bar=True)
-    #         operates, pairs, p = fast_back_test(bars, 30000, strategy)
-    #         print(p)
-    #         ops.extend(operates)
-    #         pairs_list.extend(pairs)
-    #         p_list.append(p)
-    #         f = pd.ExcelWriter(os.path.join(data_path, f"{strategy.__name__}.xlsx"))
-    #         pd.DataFrame(ops).to_excel(f, sheet_name="操作", index=False)
-    #         pd.DataFrame(pairs_list).to_excel(f, sheet_name="交易", index=False)
-    #         pd.DataFrame(p_list).to_excel(f, sheet_name="评估", index=False)
-    #         f.close()
-    #     except:
-    #         traceback.print_exc()

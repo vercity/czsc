@@ -70,10 +70,9 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
                 amount = int(record['amount'] * 1000)
             else:
                 amount = record['avg_price'] * record['vol'] * 1000
-
         else:
             vol = int(record['vol'])
-            amount = int(record['amount'])
+            amount = int(record.get('amount', 0))
 
         # 将每一根K线转换成 RawBar 对象
         bar = RawBar(symbol=record['ts_code'], dt=pd.to_datetime(record[dt_key]),
