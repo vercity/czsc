@@ -7,12 +7,14 @@ describe: 技术分析相关信号的计算
 """
 import numpy as np
 from collections import OrderedDict
-from datetime import datetime
 
-from czsc import analyze
+from .. import analyze
 from ..objects import Signal
 from ..enum import Freq
-from ..utils.ta import MACD, SMA
+try:
+    from ..utils.ta1 import MACD, SMA
+except:
+    from ..utils.ta import MACD, SMA
 
 
 def get_s_single_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
@@ -179,13 +181,14 @@ def get_s_sma(c: analyze.CZSC, di: int = 1, t_seq=(5, 10, 20, 60)) -> OrderedDic
         s[x1.key] = x1.value
         s[x2.key] = x2.value
 
-    if len(c.bars_raw) < 100:
+    n = max(t_seq) + 10
+    if len(c.bars_raw) < n:
         return s
 
     if di == 1:
-        close = np.array([x.close for x in c.bars_raw[-100:]])
+        close = np.array([x.close for x in c.bars_raw[-n:]])
     else:
-        close = np.array([x.close for x in c.bars_raw[-100-di+1:-di+1]])
+        close = np.array([x.close for x in c.bars_raw[-n-di+1:-di+1]])
 
     for t in t_seq:
         sma = SMA(close, timeperiod=t)
