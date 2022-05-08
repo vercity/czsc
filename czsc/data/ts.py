@@ -154,3 +154,5 @@ def get_ths_members(exchange="A"):
     res_df = pd.concat(res, ignore_index=True)
     return res_df
 
+def get_all_stocks():
+    return pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name')
