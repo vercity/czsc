@@ -34,7 +34,6 @@ class RawBar:
     high: [float, int]
     low: [float, int]
     vol: [float, int]
-    pct_chg: [float, int] = 0
     amount: [float, int] = None
 
 
@@ -108,6 +107,14 @@ class FX:
         """成交量力度"""
         assert len(self.elements) == 3
         return sum([x.vol for x in self.elements])
+
+    @property
+    def has_zs(self):
+        """构成分型的三根无包含K线是否有重叠中枢"""
+        assert len(self.elements) == 3
+        zd = max([x.low for x in self.elements])
+        zg = min([x.high for x in self.elements])
+        return zg >= zd
 
 
 @dataclass
@@ -429,7 +436,7 @@ def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> d
     if len(pairs) == 0:
         return p
 
-    p['盈亏平衡点'] = cal_break_even_point([x['盈亏比例'] for x in pairs])
+    p['盈亏平衡点'] = round(cal_break_even_point([x['盈亏比例'] for x in pairs]), 4)
 
     p['复利收益'] = 1
     for pair in pairs:

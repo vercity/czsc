@@ -10,13 +10,38 @@ Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。
 """
 import os.path
 import shutil
-
 import pandas as pd
 from deprecated import deprecated
 
 from .ts import *
 from .. import envs
 from ..utils import io
+
+
+def update_bars_return(kline: pd.DataFrame, bar_numbers=None):
+    """给K线加上未来收益和过去收益的计算
+
+    :param kline:
+    :param bar_numbers:
+    :return:
+    """
+    # 统一处理数据精度
+    for col in ['open', 'close', 'high', 'low']:
+        kline[col] = kline[col].round(4)
+
+    assert kline['dt'][0] < kline['dt'][1], "kline 必须是时间升序"
+    if not bar_numbers:
+        bar_numbers = (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)
+    for bar_number in bar_numbers:
+        # 向后看（今天的 n1b 等于后天的开盘价相对明天开盘价的收益，单位：BP）
+        n_col = 'n' + str(bar_number) + 'b'
+        kline[n_col] = (kline['open'].shift(-bar_number-1) / kline['open'].shift(-1) - 1) * 10000
+        kline[n_col] = kline[n_col].round(4)
+
+        # 向前看（今天的 b1b 等于今天的收盘价相对昨天收盘价的收益，单位：BP）
+        b_col = 'b' + str(bar_number) + 'b'
+        kline[b_col] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
+        kline[b_col] = kline[b_col].round(4)
 
 
 class TsDataCache:
@@ -89,24 +114,12 @@ class TsDataCache:
             if self.verbose:
                 print(f"ths_daily: read cache {file_cache}")
         else:
-            kline = pro.ths_daily(ts_code=ts_code, start_date=self.sdt, end_date=self.edt,)
-                                  # fields='ts_code,trade_date,open,close,high,low,vol')
+            kline = pro.ths_daily(ts_code=ts_code, start_date=self.sdt, end_date=self.edt,
+                                  fields='ts_code,trade_date,open,close,high,low,vol')
             kline = kline.sort_values('trade_date', ignore_index=True)
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
             kline['dt'] = kline['trade_date']
-
-            # for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
-            for bar_number in (1, 2, 3, 5, 10, 20):
-                # 向后看
-                n_col_name = 'n' + str(bar_number) + 'b'
-                kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
-                kline[n_col_name] = kline[n_col_name].round(4)
-
-                # 向前看
-                b_col_name = 'b' + str(bar_number) + 'b'
-                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
-                kline[b_col_name] = kline[b_col_name].round(4)
-
+            update_bars_return(kline)
             io.save_pkl(kline, file_cache)
 
         kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
@@ -180,19 +193,7 @@ class TsDataCache:
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
             kline['dt'] = kline['trade_date']
             kline['avg_price'] = kline['amount'] / kline['vol']
-
-            # for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
-            for bar_number in (1, 2, 3, 5, 10, 20):
-                # 向后看
-                n_col_name = 'n' + str(bar_number) + 'b'
-                kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
-                kline[n_col_name] = kline[n_col_name].round(4)
-
-                # 向前看
-                b_col_name = 'b' + str(bar_number) + 'b'
-                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
-                kline[b_col_name] = kline[b_col_name].round(4)
-
+            update_bars_return(kline)
             io.save_pkl(kline, file_cache)
 
         start_date = pd.to_datetime(start_date)
@@ -293,18 +294,7 @@ class TsDataCache:
                 for col in ['open', 'close', 'high', 'low']:
                     kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
-            # for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
-            for bar_number in (1, 2, 3, 5, 10, 20):
-                # 向后看
-                n_col_name = 'n' + str(bar_number) + 'b'
-                kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
-                kline[n_col_name] = kline[n_col_name].round(4)
-
-                # 向前看
-                b_col_name = 'b' + str(bar_number) + 'b'
-                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
-                kline[b_col_name] = kline[b_col_name].round(4)
-
+            update_bars_return(kline)
             io.save_pkl(kline, file_cache)
 
         sdt = pd.to_datetime(sdt)
@@ -425,29 +415,6 @@ class TsDataCache:
             df = io.read_pkl(file_cache)
         else:
             df = pro.limit_list(trade_date=trade_date)
-            io.save_pkl(df, file_cache)
-        return df
-
-    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
-    def bak_basic(self, trade_date: str = None, ts_code: str = None):
-        """https://tushare.pro/document/2?doc_id=262
-
-        :param trade_date: 交易日期
-        :param ts_code: 标的代码
-        :return:
-        """
-        assert trade_date or ts_code, "请至少设定一个参数，trade_date 或 ts_code"
-
-        if trade_date:
-            trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
-
-        cache_path = self.api_path_map['bak_basic']
-        file_cache = os.path.join(cache_path, f"bak_basic_{trade_date}_{ts_code}.pkl")
-
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
-        else:
-            df = pro.bak_basic(trade_date=trade_date, ts_code=ts_code)
             io.save_pkl(df, file_cache)
         return df
 
@@ -624,56 +591,4 @@ class TsDataCache:
         dfb['上市天数'] = (dfb['trade_date'] - pd.to_datetime(dfb['list_date'], errors='coerce')).apply(lambda x: x.days)
         dfb.to_pickle(file_cache)
         return dfb
-
-    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
-    def stocks_daily_basic(self, sdt: str, edt: str):
-        """读取A股全部历史每日指标
-
-        :param sdt: 开始日期
-        :param edt: 结束日期
-        :return:
-        """
-        cache_path = self.api_path_map['stocks_daily_basic']
-        file_cache = os.path.join(cache_path, f"stocks_daily_basic_{sdt}_{edt}.pkl")
-        if os.path.exists(file_cache):
-            df = pd.read_pickle(file_cache)
-            return df
-
-        ts_codes = self.stock_basic().ts_code.to_list()
-        results = []
-        for ts_code in tqdm(ts_codes, desc='stocks_daily_basic'):
-            df1 = self.daily_basic(ts_code, sdt, edt)
-            results.append(df1)
-        dfb = pd.concat(results, ignore_index=True)
-        dfb['dt'] = pd.to_datetime(dfb['trade_date'])
-        dfb.to_pickle(file_cache)
-        return dfb
-
-    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
-    def stocks_daily_bak(self, sdt: str, edt: str):
-        """读取A股全部历史 bak_basic
-
-        :param sdt: 开始日期
-        :param edt: 结束日期
-        :return:
-        """
-        cache_path = self.api_path_map['stocks_daily_bak']
-        file_cache = os.path.join(cache_path, f"stocks_daily_bak_{sdt}_{edt}.pkl")
-        if os.path.exists(file_cache):
-            df = pd.read_pickle(file_cache)
-            return df
-
-        dates = self.get_dates_span(sdt, edt, is_open=True)
-        results = []
-        for d in tqdm(dates, desc='stocks_daily_bak'):
-            df1 = self.bak_basic(d)
-            results.append(df1)
-        dfb = pd.concat(results, ignore_index=True)
-        dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
-        dfb = dfb[['trade_date', 'ts_code', 'name']]
-        dfb['is_st'] = dfb['name'].str.contains('ST')
-        dfb.to_pickle(file_cache)
-        return dfb
-
-
 

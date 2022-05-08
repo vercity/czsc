@@ -34,7 +34,6 @@ exchanges = {
     "XHKG": "港交所"
 }
 
-ts.set_token("a6d79c0088c6d2bb619fa9dfbdf72287800d1689f2f33653bd938995")
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y%m%d"
 
@@ -75,7 +74,7 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     return bars
 
 
-# @deprecated(reason="统一到 TsDataCache 对象中", version='0.9.0')
+@deprecated(reason="统一到 TsDataCache 对象中", version='0.9.0')
 def get_kline(ts_code: str,
               start_date: [datetime, str],
               end_date: [datetime, str],
@@ -155,6 +154,3 @@ def get_ths_members(exchange="A"):
     res_df = pd.concat(res, ignore_index=True)
     return res_df
 
-def get_all_stocks():
-    data = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
-    return data

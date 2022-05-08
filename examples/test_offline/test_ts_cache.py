@@ -14,20 +14,6 @@ from czsc.data.ts_cache import *
 os.environ['czsc_verbose'] = '1'
 
 
-def test_ts_cache_bak_basic():
-    dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024')
-    cache_path = './TS_CACHE_20200101_20211024'
-    assert os.path.exists(cache_path)
-    df = dc.bak_basic(trade_date='2018-03-15')
-    assert df.shape[0] == 3505
-
-    df1 = dc.bak_basic(ts_code='600806.SH')
-    assert df1.shape[0] == 432
-
-    assert df1.shape[1] == df.shape[1]
-    dc.clear()
-
-
 def test_ts_cache_daily_basic_new():
     dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024')
     cache_path = './TS_CACHE_20200101_20211024'
@@ -104,23 +90,13 @@ def test_ts_cache():
     news = dc.cctv_news('20211103')
     assert news.shape[0] == 14
 
-    df_d = dc.daily_basic(ts_code='300033.SZ', start_date='20200101', end_date='20210101')
-    assert len(df_d) == 243
-    df_d = dc.daily_basic(ts_code='300033.SZ', start_date='20200101', end_date='20210101')
-    assert len(df_d) == 243
-
     # 测试指数成分和权重数据缓存
     df = dc.index_weight('000905.SH', '20210923')
-    assert len(df) == 500
+    assert len(df) == 502
     df = dc.index_weight('000905.SH', '20210901')
-    assert len(df) == 500
-
+    assert len(df) == 502
     df = dc.index_weight('000300.SH', '20200208')
     assert len(df) == 300
-
-    # 测试复权因子获取
-    df = dc.adj_factor(ts_code='000001.SZ')
-    assert not df.empty
 
     df = dc.get_all_ths_members(exchange='A', type_='N')
     assert not df.empty

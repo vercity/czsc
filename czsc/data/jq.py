@@ -25,9 +25,6 @@ date_fmt = "%Y-%m-%d"
 freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
                 "30min": "30m", "60min": '60m', "D": "1d", "W": '1w', "M": "1M"}
 
-freq_map_new = {"1分钟" : '1min', "5分钟" : '5min', "15分钟" : '15min', "30分钟" : '30min',
-            "60分钟" : '60min', "日线" : 'D', "周线" : 'W', "月线" : 'M'}
-
 freq_map = {'1min': Freq.F1, '5min': Freq.F5, '15min': Freq.F15, '30min': Freq.F30,
             '60min': Freq.F60, 'D': Freq.D, 'W': Freq.W, 'M': Freq.M}
 
@@ -120,6 +117,8 @@ def get_concept_stocks(symbol, date=None):
     """
     if not date:
         date = str(datetime.now().date())
+    else:
+        date = pd.to_datetime(date)
 
     if isinstance(date, datetime):
         date = str(date.date())
@@ -295,10 +294,11 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
                                close=round(float(row[2]), 2),
                                high=round(float(row[3]), 2),
                                low=round(float(row[4]), 2),
-                               vol=int(row[5])))
+                               vol=int(row[5]), amount=int(float(row[6]))))
+            # amount 单位：元
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
-    if "min" in freq and len(bars) > 0:
+    if "min" in freq:
         bars[-1].dt = freq_end_time(bars[-1].dt, freq=freq_map[freq])
     bars = [x for x in bars if x.dt <= end_date]
     return bars
@@ -350,7 +350,8 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
                                close=round(float(row[2]), 2),
                                high=round(float(row[3]), 2),
                                low=round(float(row[4]), 2),
-                               vol=int(row[5])))
+                               vol=int(row[5]), amount=int(float(row[6]))))
+            # amount 单位：元
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq and bars:
@@ -375,7 +376,7 @@ def get_init_bg(symbol: str,
     bg = BarGenerator(base_freq, freqs, max_count)
     for freq in bg.bars.keys():
         bars_ = get_kline(symbol=symbol, end_date=last_day, freq=freq_cn2jq[freq], count=max_count, fq=fq)
-        bg.bars[freq] = bars_
+        bg.init_freq_bars(freq, bars_)
         print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
 
     bars2 = get_kline_period(symbol, last_day, end_dt, freq=freq_cn2jq[base_freq], fq=fq)

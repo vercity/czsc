@@ -14,8 +14,8 @@ from tqdm import tqdm
 from typing import Callable
 
 from .. import envs
-from ..data.ts_cache import TsDataCache
-from ..traders.utils import trader_fast_backtest, freq_cn2ts
+from ..data import TsDataCache, freq_cn2ts
+from ..traders.utils import trader_fast_backtest
 from ..utils import x_round
 from ..objects import cal_break_even_point
 
@@ -40,8 +40,6 @@ def read_raw_results(raw_path, trade_dir="long"):
         except:
             print(f"read_raw_results: fail on {file}")
 
-    if(len(pairs) == 0):
-        return
     df_pairs = pd.concat(pairs, ignore_index=True)
     df_p = pd.concat(p, ignore_index=True)
     return df_pairs, df_p
@@ -212,6 +210,9 @@ class TsStocksBacktest:
     def analyze_results(self, step, trade_dir="long"):
         res_path = self.res_path
         raw_path = os.path.join(res_path, f'raw_{step}')
+        if not os.path.exists(raw_path):
+            return
+
         df_pairs, df_p = read_raw_results(raw_path, trade_dir)
         s_name = self.strategy.__name__
 
@@ -257,15 +258,9 @@ class TsStocksBacktest:
         os.makedirs(raw_path, exist_ok=True)
         asset = self.asset_map[step]
 
-        tactic = strategy()
-        base_freq = tactic['base_freq']
-        signals_n = tactic.get('signals_n', 0)
-        assert signals_n >= 0
-
-        with open(os.path.join(res_path, f'{strategy.__name__}_strategy.txt'), 'w', encoding='utf-8') as f:
-            f.write(inspect.getsource(strategy))
-
-        for ts_code in ts_codes[:100]:
+        for ts_code in ts_codes:
+            tactic = strategy(ts_code)
+            base_freq = tactic['base_freq']
             if save_html:
                 html_path = os.path.join(res_path, f"raw_{step}/{ts_code}")
                 os.makedirs(html_path, exist_ok=True)
@@ -285,9 +280,8 @@ class TsStocksBacktest:
                 else:
                     bars = dc.pro_bar(ts_code, sdt, edt, freq=freq_cn2ts[base_freq],
                                       asset=asset, adj='hfq', raw_bar=True)
-                res = trader_fast_backtest(bars, init_n, strategy, html_path, signals_n=signals_n)
-                if(len(res['signals']) == 0):
-                    continue
+                res = trader_fast_backtest(bars, init_n, strategy, html_path)
+
                 # 保存信号结果
                 dfs = pd.DataFrame(res['signals'])
                 c_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('object')]
@@ -315,10 +309,8 @@ class TsStocksBacktest:
             except:
                 traceback.print_exc()
 
-        if tactic.get('long_events', None):
-            self.analyze_results(step, 'long')
-        if tactic.get('short_events', None):
-            self.analyze_results(step, 'short')
+        self.analyze_results(step, 'long')
+        self.analyze_results(step, 'short')
         print(f"results saved into {self.res_path}")
 
     def analyze_signals(self, step: str):
