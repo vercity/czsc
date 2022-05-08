@@ -4,6 +4,8 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/11/21 17:48
 describe: 技术分析相关信号的计算
+
+ta-lib 安装包：https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
 """
 import numpy as np
 from collections import OrderedDict
@@ -94,6 +96,7 @@ def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     default_signals = [
         Signal(k1=k1, k2=k2, k3="DIF多空", v1="其他", v2='其他', v3='其他'),
         Signal(k1=k1, k2=k2, k3="DIF方向", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=k1, k2=k2, k3="DIF回抽", v1="其他", v2='其他', v3='其他'),
 
         Signal(k1=k1, k2=k2, k3="DEA多空", v1="其他", v2='其他', v3='其他'),
         Signal(k1=k1, k2=k2, k3="DEA方向", v1="其他", v2='其他', v3='其他'),
@@ -129,6 +132,13 @@ def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
         v = Signal(k1=k1, k2=k2, k3="DIF方向", v1="向下")
     else:
         v = Signal(k1=k1, k2=k2, k3="DIF方向", v1="模糊")
+    s[v.key] = v.value
+
+    # if dif[-1] <= 0.1 and dif[-1] >= -0.1 and ((dif[-2] > 0.1 and dif[-2] < dif[-3]) or (dif[-3] > 0.1 and dif[-2] < dif[-3])):
+    if dif[-1] <= 0.1 and dif[-1] >= -0.1:
+        v = Signal(k1=k1, k2=k2, k3="DIF回抽", v1="0轴")
+    else:
+        v = Signal(k1=k1, k2=k2, k3="DIF回抽", v1="非0")
     s[v.key] = v.value
 
     # DEA 多空信号

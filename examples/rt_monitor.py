@@ -38,7 +38,7 @@ os.makedirs(ct_path, exist_ok=True)
 qywx_key = "4ad2e226-2519-4893-8670-*****"
 
 # 定义需要监控的股票列表
-symbols = ["000671.XSHE", '600596.XSHG', "600733.XSHG", "300037.XSHE",
+symbols = ["002340.XSHE", "002062.XSHE", "002116.XSHE", '603316.XSHG', "000856.XSHE",
            # "159915.XSHE",
            ]
 

@@ -157,7 +157,6 @@ def generate_signals(bars: List[RawBar],
                      freqs: List[AnyStr],
                      get_signals: Callable,
                      max_bi_count: int = 50,
-                     bi_min_len: int = 7,
                      signals_n: int = 0,
                      ):
     """获取历史信号
@@ -168,7 +167,6 @@ def generate_signals(bars: List[RawBar],
     :param freqs: K线周期列表
     :param get_signals: 单级别信号计算函数
     :param max_bi_count: 单个级别最大保存笔的数量
-    :param bi_min_len: 一笔最小无包含K线数量
     :param signals_n: 见 `CZSC` 对象
     :return: signals
     """
@@ -189,8 +187,7 @@ def generate_signals(bars: List[RawBar],
         bg.update(bar)
 
     signals = []
-    ct = CzscAdvancedTrader(bg, get_signals, max_bi_count=max_bi_count,
-                            bi_min_len=bi_min_len, signals_n=signals_n)
+    ct = CzscAdvancedTrader(bg, get_signals, max_bi_count=max_bi_count, signals_n=signals_n)
     for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
         ct.update(bar)
         signals.append(dict(ct.s))
@@ -479,7 +476,7 @@ def generate_stocks_signals(dc: TsDataCache,
 class SignalsPerformance:
     """信号表现分析"""
 
-    def __init__(self, dfs: pd.DataFrame, keys: List[AnyStr], dc: TsDataCache, base_freq="日线"):
+    def __init__(self, dfs: pd.DataFrame, keys: List[AnyStr], dc: TsDataCache = None, base_freq="日线"):
         """
 
         :param dfs: 信号表
@@ -682,22 +679,15 @@ class SignalsPerformance:
             '向前看时序': self.analyze_return('1b'),
             '向后看时序': self.analyze_return('1n'),
 
-            '信号数量与上证50相关性': self.analyze_corr_index('000016.SH'),
-            '信号数量与中证500相关性': self.analyze_corr_index('000905.SH'),
-            '信号数量与沪深300相关性': self.analyze_corr_index('000300.SH'),
             '信号数量与自身收益相关性': self.analyze_ar_counts(),
-
-            # 'b1b与自身收益相关性': self.analyze_b_bar('b1b'),
-            # 'b5b与自身收益相关性': self.analyze_b_bar('b5b'),
-            # 'b13b与自身收益相关性': self.analyze_b_bar('b13b'),
-            # 'b21b与自身收益相关性': self.analyze_b_bar('b21b'),
-            # 'b34b与自身收益相关性': self.analyze_b_bar('b34b'),
-            # 'b55b与自身收益相关性': self.analyze_b_bar('b55b'),
-            # 'b89b与自身收益相关性': self.analyze_b_bar('b89b'),
-            # 'b144b与自身收益相关性': self.analyze_b_bar('b144b'),
-            # 'b233b与自身收益相关性': self.analyze_b_bar('b233b'),
         }
 
+        if self.dc:
+            res.update({
+                '信号数量与上证50相关性': self.analyze_corr_index('000016.SH'),
+                '信号数量与中证500相关性': self.analyze_corr_index('000905.SH'),
+                '信号数量与沪深300相关性': self.analyze_corr_index('000300.SH'),
+            })
         if file_xlsx:
             writer = pd.ExcelWriter(file_xlsx)
             for sn, df_ in res.items():

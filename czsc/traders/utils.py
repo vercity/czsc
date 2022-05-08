@@ -111,12 +111,12 @@ def trader_fast_backtest(bars: List[RawBar],
                 ct.take_snapshot(file_html)
                 print(f'snapshot saved into {file_html}')
 
-    p = {"开始时间": bars[init_n].dt.strftime("%Y-%m-%d %H:%M"),
+    p = {"开始时间": bars[0].dt.strftime("%Y-%m-%d %H:%M"),
          "结束时间": bars[-1].dt.strftime("%Y-%m-%d %H:%M"),
-         "基准收益": round(bars[-1].close / bars[init_n].close - 1, 4)}
+         "基准收益": round(bars[-1].close / bars[0].close - 1, 4)}
 
     res = {"signals": signals}
-    if ct.long_pos:
+    if ct.long_pos and len(long_holds) > 0:
         df_holds = pd.DataFrame(long_holds)
         cover = df_holds['long_pos'].mean()
         res['long_holds'] = df_holds
@@ -126,7 +126,7 @@ def trader_fast_backtest(bars: List[RawBar],
         res['long_performance'].update(dict(p))
         res['long_performance'].update({"覆盖率": x_round(cover, 4)})
 
-    if ct.short_pos:
+    if ct.short_pos and len(short_holds) > 0:
         df_holds = pd.DataFrame(short_holds)
         cover = df_holds['short_pos'].mean()
         res['short_holds'] = pd.DataFrame(short_holds)

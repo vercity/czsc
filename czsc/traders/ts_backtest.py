@@ -13,9 +13,11 @@ import pandas as pd
 from tqdm import tqdm
 from typing import Callable
 
+from .. import envs
 from ..data.ts_cache import TsDataCache
 from ..traders.utils import trader_fast_backtest, freq_cn2ts
 from ..utils import x_round
+from ..objects import cal_break_even_point
 
 
 def read_raw_results(raw_path, trade_dir="long"):
@@ -27,22 +29,22 @@ def read_raw_results(raw_path, trade_dir="long"):
     """
     assert trade_dir in ['long', 'short']
 
-    ops, pairs, p = [], [], []
+    pairs, p = [], []
     for file in tqdm(os.listdir(raw_path)):
         if len(file) != 14:
             continue
         file = os.path.join(raw_path, file)
         try:
-            ops.append(pd.read_excel(file, sheet_name=f'{trade_dir}_operates'))
             pairs.append(pd.read_excel(file, sheet_name=f'{trade_dir}_pairs'))
             p.append(pd.read_excel(file, sheet_name=f'{trade_dir}_performance'))
         except:
             print(f"read_raw_results: fail on {file}")
 
+    if(len(pairs) == 0):
+        return
     df_pairs = pd.concat(pairs, ignore_index=True)
-    df_ops = pd.concat(ops, ignore_index=True)
     df_p = pd.concat(p, ignore_index=True)
-    return df_ops, df_pairs, df_p
+    return df_pairs, df_p
 
 
 class TraderPerformance:
@@ -61,8 +63,7 @@ class TraderPerformance:
 
         self.df_pairs = df_pairs
         # 指定哪些列可以用来进行聚合分析
-        self.agg_columns = ['标的代码', '交易方向', '开仓年', '平仓年', '开仓月', '平仓月',
-                            '开仓周', '平仓周', '开仓日', '平仓日']
+        self.agg_columns = ['标的代码', '交易方向', '平仓年', '平仓月', '平仓周', '平仓日']
 
     @staticmethod
     def get_pairs_statistics(df_pairs: pd.DataFrame):
@@ -73,6 +74,8 @@ class TraderPerformance:
         """
         if len(df_pairs) == 0:
             info = {
+                "开始时间": None,
+                "结束时间": None,
                 "交易标的数量": 0,
                 "总体交易次数": 0,
                 "平均持仓天数": 0,
@@ -85,6 +88,7 @@ class TraderPerformance:
                 "累计盈亏比": 0,
                 "交易得分": 0,
                 "每自然日收益": 0,
+                "盈亏平衡点": 0,
             }
             return info
 
@@ -98,6 +102,9 @@ class TraderPerformance:
         gain_loss_rate = min(x_round(gain / (loss + 0.000001), 2), 5)
 
         info = {
+            "开始时间": df_pairs['开仓时间'].min(),
+            "结束时间": df_pairs['平仓时间'].max(),
+
             "交易标的数量": df_pairs['标的代码'].nunique(),
             "总体交易次数": len(df_pairs),
             "平均持仓天数": x_round(df_pairs['持仓天数'].mean(), 2),
@@ -109,6 +116,7 @@ class TraderPerformance:
             "交易胜率": win_pct,
             "累计盈亏比": gain_loss_rate,
             "交易得分": x_round(gain_loss_rate * win_pct, 4),
+            "盈亏平衡点": x_round(cal_break_even_point(df_pairs['盈亏比例'].to_list()), 4),
         }
 
         info['每自然日收益'] = x_round(info['平均单笔收益'] / info['平均持仓天数'], 2)
@@ -168,7 +176,7 @@ class TsStocksBacktest:
         self.strategy = strategy
         self.init_n = init_n
         self.data_path = dc.data_path
-        self.res_path = os.path.join(self.data_path, strategy.__name__)
+        self.res_path = os.path.join(self.data_path, f"{strategy.__name__}_mbl{envs.get_min_bi_len()}")
         os.makedirs(self.res_path, exist_ok=True)
 
         file_strategy = os.path.join(self.res_path, f'{strategy.__name__}_strategy.txt')
@@ -176,10 +184,7 @@ class TsStocksBacktest:
             f.write(inspect.getsource(strategy))
         print(f"strategy saved into {file_strategy}")
 
-        self.dc = dc
-        self.sdt = sdt
-        self.edt = edt
-
+        self.dc, self.sdt, self.edt = dc, sdt, edt
         stocks = self.dc.stock_basic()
         stocks_ = stocks[stocks['list_date'] < '2010-01-01'].ts_code.to_list()
         self.stocks_map = {
@@ -195,16 +200,22 @@ class TsStocksBacktest:
                      '159981.SZ', '159949.SZ', '159915.SZ'],
         }
 
+        self.asset_map = {
+            "index": "I",
+            "stock": "E",
+            "check": "E",
+            "train": "E",
+            "valid": "E",
+            "etfs": "FD"
+        }
+
     def analyze_results(self, step, trade_dir="long"):
         res_path = self.res_path
         raw_path = os.path.join(res_path, f'raw_{step}')
-        df_ops, df_pairs, df_p = read_raw_results(raw_path, trade_dir)
+        df_pairs, df_p = read_raw_results(raw_path, trade_dir)
         s_name = self.strategy.__name__
 
-        df_ops.to_csv(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_operates.csv"), index=False)
-        df_pairs.to_excel(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_pairs.xlsx"),
-                          index=False)
-
+        df_pairs.to_excel(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_pairs.xlsx"), index=False)
         f = pd.ExcelWriter(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_performance.xlsx"))
         df_p.to_excel(f, sheet_name="评估", index=False)
         tp = TraderPerformance(df_pairs)
@@ -213,6 +224,15 @@ class TsStocksBacktest:
             df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
         f.close()
         print(f"{s_name} - {step} - {trade_dir}: {tp.basic_info}")
+
+    def update_step(self, step: str, ts_codes: list):
+        """更新指定阶段的批量回测标的
+
+        :param step: 阶段名称
+        :param ts_codes: 标的列表
+        :return:
+        """
+        self.stocks_map[step] += ts_codes
 
     def batch_backtest(self, step):
         """批量回测
@@ -230,18 +250,12 @@ class TsStocksBacktest:
         init_n = self.init_n
         save_html = True if step == 'check' else False
         ts_codes = self.stocks_map[step]
-        dc = self.dc
+        dc, sdt, edt = self.dc, self.sdt, self.edt
         res_path = self.res_path
-        sdt = self.sdt
-        edt = self.edt
         strategy = self.strategy
         raw_path = os.path.join(res_path, f"raw_{step}")
         os.makedirs(raw_path, exist_ok=True)
-
-        if step == 'index':
-            asset = "I"
-        else:
-            asset = 'E'
+        asset = self.asset_map[step]
 
         tactic = strategy()
         base_freq = tactic['base_freq']
@@ -251,7 +265,7 @@ class TsStocksBacktest:
         with open(os.path.join(res_path, f'{strategy.__name__}_strategy.txt'), 'w', encoding='utf-8') as f:
             f.write(inspect.getsource(strategy))
 
-        for ts_code in ts_codes:
+        for ts_code in ts_codes[:100]:
             if save_html:
                 html_path = os.path.join(res_path, f"raw_{step}/{ts_code}")
                 os.makedirs(html_path, exist_ok=True)
@@ -272,7 +286,8 @@ class TsStocksBacktest:
                     bars = dc.pro_bar(ts_code, sdt, edt, freq=freq_cn2ts[base_freq],
                                       asset=asset, adj='hfq', raw_bar=True)
                 res = trader_fast_backtest(bars, init_n, strategy, html_path, signals_n=signals_n)
-
+                if(len(res['signals']) == 0):
+                    continue
                 # 保存信号结果
                 dfs = pd.DataFrame(res['signals'])
                 c_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('object')]
@@ -343,6 +358,9 @@ class TsStocksBacktest:
             dfs = pd.read_pickle(file_dfs)
 
         results_path = os.path.join(raw_path, 'signals_performance')
+        if os.path.exists(results_path):
+            return
+
         os.makedirs(results_path, exist_ok=True)
         signal_cols = [x for x in dfs.columns if len(x.split("_")) == 3]
         for key in signal_cols:

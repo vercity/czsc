@@ -607,7 +607,9 @@ if __name__ == '__main__':
             thisTypeConcept[row['ts_code']]['stocks'] = thisTypeConceptDetailStock
             conceptsDic[row['type']] = thisTypeConcept
     save_pkl(conceptsDic, os.path.join(ct_path, "members"))
-    # df = pro.trade_cal(exchange='', start_date='20210215')
+
+
+    # df = pro.trade_cal(exchange='', start_date='20220303')
     # allTradingDates = df.loc[df['is_open'] == 1]['cal_date'].values.tolist()
     # moni_path = os.path.join(ct_path, "monitor")
     #
@@ -617,7 +619,7 @@ if __name__ == '__main__':
     #         matchedCB = allCBs.loc[allCBs['stk_short_name'] == row['name']]
     #         if matchedCB.empty == False:
     #             strong = row['strth']
-    #             if strong > 99:
+    #             if strong > 90:
     #             # if (int)(lastFeng) < 100000:
     #                 print(str(oneDay) + ' ' + row['name'] + ' ' + matchedCB['ts_code'])
     #                 print('----------')

@@ -40,10 +40,10 @@ def sds_czsc_v1_t1():
 
 if __name__ == '__main__':
     strategy = sds_czsc_v1_t1
-    data_path = r"C:\ts_data"
-    dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-03-23')
+    data_path = r"/Volumes/OuGuMore/Stock/sensors"
+    dc = TsDataCache(data_path, sdt='2018-01-01', edt='2022-04-05')
     sdt = "20180101"
-    edt = "20220320"
+    edt = "20220331"
     experiment_name = strategy()[0].__doc__
     experiment_path = os.path.join(data_path, experiment_name.upper())
     sss = StocksDaySensor(experiment_path, sdt, edt, dc, strategy, signals_n=0)

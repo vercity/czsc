@@ -402,7 +402,7 @@ class StocksDaySensor:
                 dfg, key_concepts = selected_filter_by_concepts(dc, dfg, top_n=fc_top_n, min_n=fc_min_n)
                 dfg = selected_filter_by_market_value(dfg, min_total_mv)
                 dfg = selected_filter_by_index(dc, dfg, index_code)
-                dfg = selected_filter_by_rps(dfg, n=21, v_range=(0.1, 0.8), max_count=max_count)
+                dfg = selected_filter_by_rps(dfg, n=20, v_range=(0.1, 0.8), max_count=max_count)
                 selected_dfg[trade_date] = {'dfg': dfg, 'key_concepts': key_concepts}
             except:
                 traceback.print_exc()

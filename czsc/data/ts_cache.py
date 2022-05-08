@@ -10,7 +10,9 @@ Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。
 """
 import os.path
 import shutil
+
 import pandas as pd
+from deprecated import deprecated
 
 from .ts import *
 from .. import envs
@@ -55,10 +57,11 @@ class TsDataCache:
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
             'hk_hold', 'cctv_news', 'daily_basic', 'index_weight',
-            'adj_factor', 'pro_bar_minutes', 'limit_list', 'bak_basic',
+            'pro_bar_minutes', 'limit_list', 'bak_basic',
 
             # CZSC加工缓存
-            "stocks_daily_bars", "stocks_daily_basic", "stocks_daily_bak"
+            "stocks_daily_bars", "stocks_daily_basic", "stocks_daily_bak",
+            "daily_basic_new", "stocks_daily_basic_new"
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -234,13 +237,15 @@ class TsDataCache:
                 dt1 = dt2
                 dt2 = dt1 + delta
                 if self.verbose:
-                    print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - {dt1} - {dt2}")
+                    print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - {dt1} - {dt2} - {len(df)}")
 
             df_klines = pd.concat(klines, ignore_index=True)
             kline = df_klines.drop_duplicates('trade_time')\
                 .sort_values('trade_time', ascending=True, ignore_index=True)
             kline['trade_time'] = pd.to_datetime(kline['trade_time'], format=dt_fmt)
             kline['dt'] = kline['trade_time']
+            float_cols = ['open', 'close', 'high', 'low', 'vol', 'amount']
+            kline[float_cols] = kline[float_cols].astype('float32')
             kline['avg_price'] = kline['amount'] / kline['vol']
 
             # 删除9:30的K线
@@ -254,28 +259,39 @@ class TsDataCache:
             end_date = pd.to_datetime(self.edt)
             kline = kline[(kline['trade_time'] >= start_date) & (kline['trade_time'] <= end_date)]
             kline = kline.reset_index(drop=True)
+            kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
 
-            # 只对股票有复权操作；复权行情说明：https://tushare.pro/document/2?doc_id=146
-            if asset == 'E' and adj and adj == 'qfq':
+            if asset == 'E':
+                # https://tushare.pro/document/2?doc_id=28
+                factor = pro.adj_factor(ts_code=ts_code, start_date=self.sdt, end_date=self.edt)
+            elif asset == 'FD':
+                # https://tushare.pro/document/2?doc_id=199
+                factor = pro.fund_adj(ts_code=ts_code, start_date=self.sdt, end_date=self.edt)
+            else:
+                factor = pd.DataFrame()
+
+            if len(factor) > 0:
+                # 处理复权因子缺失的情况：前值填充
+                df1 = pd.DataFrame({'trade_date': kline['trade_date'].unique().tolist()})
+                factor = df1.merge(factor, on=['trade_date'], how='left').fillna(method='ffill')
+                factor = factor.sort_values('trade_date', ignore_index=True)
+
+            if self.verbose:
+                print(f"pro_bar_minutes: {ts_code} - {asset} - 复权因子长度 = {len(factor)}")
+
+            # 复权行情说明：https://tushare.pro/document/2?doc_id=146
+            if len(factor) > 0 and adj and adj == 'qfq':
                 # 前复权	= 当日收盘价 × 当日复权因子 / 最新复权因子
-                factor = self.adj_factor(ts_code)
-                if not factor.empty:
-                    factor = factor.sort_values('trade_date', ignore_index=True)
-                    latest_factor = factor.iloc[-1]['adj_factor']
-                    kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
-                    adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
-                    for col in ['open', 'close', 'high', 'low']:
-                        kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
+                latest_factor = factor.iloc[-1]['adj_factor']
+                adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
+                for col in ['open', 'close', 'high', 'low']:
+                    kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
 
-            if asset == 'E' and adj and adj == 'hfq':
+            if len(factor) > 0 and adj and adj == 'hfq':
                 # 后复权	= 当日收盘价 × 当日复权因子
-                factor = self.adj_factor(ts_code)
-                if not factor.empty:
-                    factor = factor.sort_values('trade_date', ignore_index=True)
-                    kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
-                    adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
-                    for col in ['open', 'close', 'high', 'low']:
-                        kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
+                adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
+                for col in ['open', 'close', 'high', 'low']:
+                    kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
             # for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
             for bar_number in (1, 2, 3, 5, 10, 20):
@@ -356,6 +372,7 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
+    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
     def daily_basic(self, ts_code: str, start_date: str, end_date: str):
         """每日指标
 
@@ -394,21 +411,6 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
-    def adj_factor(self, ts_code: str):
-        """复权因子
-
-        https://tushare.pro/document/2?doc_id=28
-        """
-        cache_path = self.api_path_map['adj_factor']
-        file_cache = os.path.join(cache_path, f"adj_factor_{ts_code}.pkl")
-
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
-        else:
-            df = pro.adj_factor(ts_code=ts_code, start_date=self.sdt, end_date=self.edt)
-            io.save_pkl(df, file_cache)
-        return df
-
     def limit_list(self, trade_date: str):
         """https://tushare.pro/document/2?doc_id=198
 
@@ -426,6 +428,7 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
+    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
     def bak_basic(self, trade_date: str = None, ts_code: str = None):
         """https://tushare.pro/document/2?doc_id=262
 
@@ -449,6 +452,34 @@ class TsDataCache:
         return df
 
     # ------------------------------------以下是 CZSC 加工接口----------------------------------------------
+
+    def daily_basic_new(self, trade_date: str):
+        """股票每日指标接口整合
+
+        每日指标：https://tushare.pro/document/2?doc_id=32
+        备用列表：https://tushare.pro/document/2?doc_id=262
+
+        :param trade_date: 交易日期
+        :return:
+        """
+        trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
+        cache_path = self.api_path_map['daily_basic_new']
+        file_cache = os.path.join(cache_path, f"bak_basic_new_{trade_date}.pkl")
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+            return df
+
+        df1 = pro.bak_basic(trade_date=trade_date)
+        df2 = pro.daily_basic(trade_date=trade_date)
+        df1 = df1[['trade_date', 'ts_code', 'name', 'industry', 'area',
+                   'total_assets', 'liquid_assets',
+                   'fixed_assets', 'reserved', 'reserved_pershare', 'eps', 'bvps',
+                   'list_date', 'undp', 'per_undp', 'rev_yoy', 'profit_yoy', 'gpr', 'npr',
+                   'holder_num']]
+        df = df2.merge(df1, on=['ts_code', 'trade_date'], how='left')
+        df['is_st'] = df['name'].str.contains('ST')
+        io.save_pkl(df, file_cache)
+        return df
 
     def get_all_ths_members(self, exchange="A", type_="N"):
         """获取同花顺A股全部概念列表"""
@@ -573,6 +604,28 @@ class TsDataCache:
         df.to_pickle(file_cache)
         return df
 
+    def stocks_daily_basic_new(self, sdt: str, edt: str):
+        """读取A股 sdt ~ edt 时间区间的全部历史 daily_basic_new
+
+        :param sdt: 开始日期
+        :param edt: 结束日期
+        :return:
+        """
+        cache_path = self.api_path_map['stocks_daily_basic_new']
+        file_cache = os.path.join(cache_path, f"stocks_daily_basic_new_{sdt}_{edt}.pkl")
+        if os.path.exists(file_cache):
+            df = pd.read_pickle(file_cache)
+            return df
+
+        dates = self.get_dates_span(sdt, edt, is_open=True)
+        results = [self.daily_basic_new(d) for d in tqdm(dates, desc='stocks_daily_basic_new')]
+        dfb = pd.concat(results, ignore_index=True)
+        dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
+        dfb['上市天数'] = (dfb['trade_date'] - pd.to_datetime(dfb['list_date'], errors='coerce')).apply(lambda x: x.days)
+        dfb.to_pickle(file_cache)
+        return dfb
+
+    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
     def stocks_daily_basic(self, sdt: str, edt: str):
         """读取A股全部历史每日指标
 
@@ -596,6 +649,7 @@ class TsDataCache:
         dfb.to_pickle(file_cache)
         return dfb
 
+    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
     def stocks_daily_bak(self, sdt: str, edt: str):
         """读取A股全部历史 bak_basic
 
