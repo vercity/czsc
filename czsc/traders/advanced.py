@@ -242,6 +242,7 @@ class CzscAdvancedTrader:
 
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
+        self.s = OrderedDict()
         if self.get_signals:
             self.s = self.get_signals(self)
         else:

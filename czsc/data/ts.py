@@ -74,7 +74,7 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     return bars
 
 
-@deprecated(reason="统一到 TsDataCache 对象中", version='0.9.0')
+# @deprecated(reason="统一到 TsDataCache 对象中", version='0.9.0')
 def get_kline(ts_code: str,
               start_date: [datetime, str],
               end_date: [datetime, str],

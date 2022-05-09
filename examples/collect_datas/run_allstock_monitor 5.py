@@ -24,6 +24,9 @@ from czsc.enum import Freq
 from czsc.utils.bar_generator import BarGenerator
 from czsc.traders import CzscAdvancedTrader
 from czsc.signals.signals import get_default_signals
+from czsc.traders import create_advanced_trader
+from czsc.strategies import trader_strategy_custom
+import dill
 
 # =======================================================================================================
 # 基础参数配置
@@ -68,12 +71,13 @@ def monitor(needCacheStocks, use_cache=True):
         try:
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct) and use_cache:
-                ct: CzscAdvancedTrader = read_pkl(file_ct)
+                ct: CzscAdvancedTrader = dill.load(open(file_ct, 'rb'))
                 updateKline(ct)
             else:
-                kg = get_init_bg(s, datetime.now(), base_freq="1分钟", freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'])
-                ct = CzscAdvancedTrader(kg, get_default_signals)
-            save_pkl(ct, file_ct)
+                kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
+                                 freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'])
+                ct = create_advanced_trader(bg=kg, raw_bars=[], strategy=trader_strategy_custom)
+            dill.dump(ct, open(file_ct, 'wb'))
             # continue
             # 每次执行，会在moni_path下面保存一份快照
             # file_html = os.path.join(moni_path, f"{ct.symbol}_{ct.end_dt.strftime('%Y%m%d%H%M')}.html")
