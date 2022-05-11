@@ -13,12 +13,11 @@ from typing import Callable, List
 from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
-
-from ..analyze import CZSC, signals_counter
-from ..objects import PositionLong, PositionShort, Operate, Event, RawBar
-from ..utils import BarGenerator, x_round
-from ..utils.cache import home_path
-from .. import envs
+from czsc.analyze import CZSC, signals_counter
+from czsc.objects import PositionLong, PositionShort, Operate, Event, RawBar
+from czsc.utils import BarGenerator, x_round
+from czsc.utils.cache import home_path
+from czsc import envs
 
 
 class CzscAdvancedTrader:
@@ -57,6 +56,7 @@ class CzscAdvancedTrader:
         self.s = OrderedDict()
         if self.get_signals:
             self.s = self.get_signals(self)
+            self.s.update(last_bar.__dict__)
         else:
             self.s = OrderedDict()
 
@@ -76,11 +76,26 @@ class CzscAdvancedTrader:
         """
         tab = Tab(page_title="{}@{}".format(self.symbol, self.end_dt.strftime("%Y-%m-%d %H:%M")))
         for freq in self.freqs:
-            chart = self.kas[freq].to_echarts(width, height)
+            ka: CZSC = self.kas[freq]
+            bs = None
+            if freq == self.base_freq and self.long_pos:
+                # 在基础周期K线上加入最近的一些多头操作记录
+                bs = []
+                for op in self.long_pos.operates[-10:]:
+                    if op['dt'] < ka.bars_raw[0].dt:
+                        continue
+
+                    if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
+                        bs.append({'dt': op['dt'], 'mark': "buy", 'price': op['price']})
+                    else:
+                        bs.append({'dt': op['dt'], 'mark': "sell", 'price': op['price']})
+
+            chart = ka.to_echarts(width, height, bs)
             tab.add(chart, freq)
 
         signals = {k: v for k, v in self.s.items() if len(k.split("_")) == 3}
         for freq in self.freqs:
+            # 按各周期K线分别加入信号表
             freq_signals = {k: signals[k] for k in signals.keys() if k.startswith("{}_".format(freq))}
             for k in freq_signals.keys():
                 signals.pop(k)
@@ -92,6 +107,7 @@ class CzscAdvancedTrader:
             tab.add(t1, f"{freq}信号")
 
         if len(signals) > 0:
+            # 加入时间、持仓状态之类的其他信号
             t1 = Table()
             t1.add(["名称", "数据"], [[k, v] for k, v in signals.items()])
             t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
@@ -121,6 +137,7 @@ class CzscAdvancedTrader:
 
         if self.get_signals:
             self.s = self.get_signals(self)
+            self.s.update(last_bar.__dict__)
 
         if self.signals_n > 0:
             self.signals_list.append(self.s)
@@ -230,15 +247,15 @@ class CzscDummyTrader:
 
     缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
 
-    def __init__(self, symbol, strategy: Callable):
+    def __init__(self, dfs, strategy: Callable):
         """
 
-        :param symbol: 标的代码
+        :param dfs: 信号数据
         :param strategy: 择时策略描述函数
             注意，strategy 函数必须是仅接受一个 symbol 参数的函数
         """
         self.name = "CzscDummyTrader"
-        self.symbol = symbol
+        self.symbol = dfs.iloc[0]['symbol']
         self.strategy = strategy
         tactic = self.strategy(self.symbol)
         self.tactic = tactic
@@ -250,6 +267,9 @@ class CzscDummyTrader:
         self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
         self.verbose = envs.get_verbose()
         self.end_dt, self.bid, self.latest_price = None, None, None
+        rows = dfs.to_dict('records')
+        for row in rows:
+            self.update(row)
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)
@@ -257,6 +277,7 @@ class CzscDummyTrader:
     def update(self, s: dict):
         """输入基础周期已完成K线，更新信号，更新仓位"""
         symbol = s['symbol']
+        n1b = s['close'] / self.latest_price - 1 if self.latest_price else 0
         self.end_dt, self.bid, self.latest_price = s['dt'], s['dt'], s['close']
         dt, bid, price = self.end_dt, self.bid, self.latest_price
 
@@ -271,8 +292,8 @@ class CzscDummyTrader:
                     break
 
             self.long_pos.update(dt, op, price, bid, op_desc)
-            # if self.long_holds:
-            #     self.long_holds[-1]['n1b'] = last_n1b
+            if self.long_holds:
+                self.long_holds[-1]['n1b'] = n1b
             self.long_holds.append({'dt': dt, 'symbol': symbol, 'long_pos': self.long_pos.pos, 'n1b': 0})
 
         # 遍历 short_events，更新 short_pos
@@ -287,8 +308,8 @@ class CzscDummyTrader:
                     break
 
             self.short_pos.update(dt, op, price, bid, op_desc)
-            # if self.short_holds:
-            #     self.short_holds[-1]['n1b'] = -last_n1b
+            if self.short_holds:
+                self.short_holds[-1]['n1b'] = -n1b
             self.short_holds.append({'dt': dt, 'symbol': symbol, 'short_pos': self.short_pos.pos, 'n1b': 0})
 
     @property

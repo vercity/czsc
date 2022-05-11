@@ -168,11 +168,30 @@ def kline_pro(kline: List[dict],
     diff = diff.round(4)
     dea = dea.round(4)
 
+    # 构建BS的MarkPoints
+    if bs:
+        items = []
+        for x in bs:
+            if x['mark'] == 'buy':
+                item = opts.MarkPointItem(
+                    name=x['mark'], value=round(x['price'], 2), coord=[x['dt'], x['price']],
+                    symbol="arrow", itemstyle_opts=opts.ItemStyleOpts(color="#c1793f", )
+                )
+            else:
+                item = opts.MarkPointItem(
+                    name=x['mark'], value=round(x['price'], 2), coord=[x['dt'], x['price']],
+                    symbol="pin", itemstyle_opts=opts.ItemStyleOpts(color="#eb8146"),
+                )
+            items.append(item)
+        mpo = opts.MarkPointOpts(data=items, label_opts=opts.LabelOpts(position="inside", color="#fff"))
+    else:
+        mpo = None
+
     # K 线主图
     # ------------------------------------------------------------------------------------------------------------------
     chart_k = Kline()
     chart_k.add_xaxis(xaxis_data=dts)
-    chart_k.add_yaxis(series_name="Kline", y_axis=k_data, itemstyle_opts=k_style_opts)
+    chart_k.add_yaxis(series_name="Kline", y_axis=k_data, itemstyle_opts=k_style_opts, markpoint_opts=mpo)
 
     chart_k.set_global_opts(
         legend_opts=legend_opts,
@@ -209,12 +228,11 @@ def kline_pro(kline: List[dict],
     # ------------------------------------------------------------------------------------------------------------------
     if fx:
         fx_dts = [x['dt'] for x in fx]
-        fx_val = [x['fx'] for x in fx]
-        # chart_fx = Scatter()
+        fx_val = [round(x['fx'], 2) for x in fx]
         chart_fx = Line()
         chart_fx.add_xaxis(fx_dts)
         chart_fx.add_yaxis(series_name="FX", y_axis=fx_val, is_selected=False,
-                           symbol="circle", symbol_size=6, label_opts=label_not_show_opts,
+                           symbol="circle", symbol_size=6, label_opts=label_show_opts,
                            itemstyle_opts=opts.ItemStyleOpts(color="rgba(152, 147, 193, 1.0)", ))
 
         chart_fx.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
@@ -222,7 +240,7 @@ def kline_pro(kline: List[dict],
 
     if bi:
         bi_dts = [x['dt'] for x in bi]
-        bi_val = [x['bi'] for x in bi]
+        bi_val = [round(x['bi'], 2) for x in bi]
         chart_bi = Line()
         chart_bi.add_xaxis(bi_dts)
         chart_bi.add_yaxis(series_name="BI", y_axis=bi_val, is_selected=True,
@@ -243,29 +261,6 @@ def kline_pro(kline: List[dict],
 
         chart_xd.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
         chart_k = chart_k.overlap(chart_xd)
-
-    if bs:
-        b_dts = [x['dt'] for x in bs if x['mark'] == 'buy']
-        if len(b_dts) > 0:
-            b_val = [x['price'] for x in bs if x['mark'] == 'buy']
-            chart_b = Scatter()
-            chart_b.add_xaxis(b_dts)
-            chart_b.add_yaxis(series_name="BUY", y_axis=b_val, is_selected=False, symbol="arrow", symbol_size=8,
-                              itemstyle_opts=opts.ItemStyleOpts(color="#f31e1e", ))
-
-            chart_b.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
-            chart_k = chart_k.overlap(chart_b)
-
-        s_dts = [x['dt'] for x in bs if x['mark'] == 'sell']
-        if len(s_dts) > 0:
-            s_val = [x['price'] for x in bs if x['mark'] == 'sell']
-            chart_s = Scatter()
-            chart_s.add_xaxis(s_dts)
-            chart_s.add_yaxis(series_name="SELL", y_axis=s_val, is_selected=False, symbol="pin", symbol_size=12,
-                              itemstyle_opts=opts.ItemStyleOpts(color="#45b97d", ))
-
-            chart_s.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
-            chart_k = chart_k.overlap(chart_s)
 
     # 成交量图
     # ------------------------------------------------------------------------------------------------------------------
