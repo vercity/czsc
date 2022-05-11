@@ -100,19 +100,13 @@ def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None
 
 def generate_signals(bars: List[RawBar],
                      sdt: AnyStr,
-                     base_freq: AnyStr,
-                     freqs: List[AnyStr],
-                     get_signals: Callable,
-                     signals_n: int = 0,
+                     strategy: Callable,
                      ):
     """获取历史信号
 
     :param bars: 日线
     :param sdt: 信号计算开始时间
-    :param base_freq: 合成K线的基础周期
-    :param freqs: K线周期列表
-    :param get_signals: 单级别信号计算函数
-    :param signals_n: 见 `CZSC` 对象
+    :param strategy: 单级别信号计算函数
     :return: signals
     """
     sdt = pd.to_datetime(sdt)
@@ -127,12 +121,15 @@ def generate_signals(bars: List[RawBar],
         warnings.warn("右侧K线为空，无法进行信号生成", category=RuntimeWarning)
         return []
 
+    tactic = strategy(bars[0].symbol)
+    base_freq = tactic['base_freq']
+    freqs = tactic['freqs']
     bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
     for bar in bars_left:
         bg.update(bar)
 
     signals = []
-    ct = CzscAdvancedTrader(bg, get_signals, signals_n=signals_n)
+    ct = CzscAdvancedTrader(bg, strategy)
     for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
         ct.update(bar)
         signals.append(dict(ct.s))
@@ -141,14 +138,16 @@ def generate_signals(bars: List[RawBar],
 
 def check_signals_acc(bars: List[RawBar],
                       signals: List[Signal] = None,
-                      get_signals: Callable = None) -> None:
+                      strategy: Callable = None,
+                      delta_days: int = 5) -> None:
     """人工验证形态信号识别的准确性的辅助工具：
 
     输入基础周期K线和想要验证的信号，输出信号识别结果的快照
 
     :param bars: 原始K线
     :param signals: 需要验证的信号列表
-    :param get_signals: 信号计算函数
+    :param strategy: 含有信号函数的伪交易策略
+    :param delta_days: 两次相同信号之间的间隔天数
     :return:
     """
     verbose = envs.get_verbose()
@@ -161,7 +160,7 @@ def check_signals_acc(bars: List[RawBar],
     freqs = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
 
     if not signals:
-        signals_ = generate_signals(bars, bars[500].dt.strftime("%Y%m%d"), base_freq, freqs, get_signals)
+        signals_ = generate_signals(bars, bars[500].dt.strftime("%Y%m%d"), strategy)
         df = pd.DataFrame(signals_)
         s_cols = [x for x in df.columns if len(x.split("_")) == 3]
         signals = []
@@ -177,7 +176,7 @@ def check_signals_acc(bars: List[RawBar],
     for bar in bars_left:
         bg.update(bar)
 
-    ct = CzscAdvancedTrader(bg, get_signals)
+    ct = CzscAdvancedTrader(bg, strategy)
     last_dt = {signal.key: ct.end_dt for signal in signals}
 
     for bar in tqdm(bars_right, desc=f'generate snapshots of {bg.symbol}'):
@@ -186,7 +185,7 @@ def check_signals_acc(bars: List[RawBar],
         for signal in signals:
             html_path = os.path.join(home_path, signal.key)
             os.makedirs(html_path, exist_ok=True)
-            if bar.dt - last_dt[signal.key] > timedelta(days=5) and signal.is_match(ct.s):
+            if bar.dt - last_dt[signal.key] > timedelta(days=delta_days) and signal.is_match(ct.s):
                 file_html = f"{bar.symbol}_{signal.key}_{ct.s[signal.key]}_{bar.dt.strftime('%Y%m%d_%H%M')}.html"
                 file_html = os.path.join(html_path, file_html)
                 print(file_html)

@@ -189,36 +189,36 @@ def trader_strategy_custom(symbol):
     # 定义多头持仓对象和交易事件
     long_pos = PositionLong(symbol, hold_long_a=1, hold_long_b=1, hold_long_c=1,
                             T0=False, long_min_interval=3600 * 4)
-    long_events = [
-        Event(name="开多", operate=Operate.LO, factors=[
-            Factor(name="低吸", signals_all=[
-                Signal("开多时间范围_13:00_14:50_是_任意_任意_0"),
-                Signal("15分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
-                Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
-                Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
-                Signal("15分钟_倒0笔_长度_5根K线以下_任意_任意_0"),
-            ]),
-        ]),
-
-        Event(name="平多", operate=Operate.LE, factors=[
-            Factor(name="持有资金", signals_all=[
-                Signal("平多时间范围_09:35_14:50_是_任意_任意_0"),
-                Signal("15分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
-            ], signals_not=[
-                Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
-                Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
-            ]),
-        ]),
-    ]
+    # long_events = [
+    #     Event(name="开多", operate=Operate.LO, factors=[
+    #         Factor(name="低吸", signals_all=[
+    #             # Signal("开多时间范围_13:00_14:50_是_任意_任意_0"),
+    #             # Signal("15分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
+    #             # Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
+    #             # Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
+    #             Signal("15分钟_倒0笔_长度_5根K线以下_任意_任意_0"),
+    #         ]),
+    #     ]),
+    #
+    #     Event(name="平多", operate=Operate.LE, factors=[
+    #         Factor(name="持有资金", signals_all=[
+    #             # Signal("平多时间范围_09:35_14:50_是_任意_任意_0"),
+    #             Signal("15分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
+    #         ], signals_not=[
+    #             Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
+    #             # Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
+    #         ]),
+    #     ]),
+    # ]
 
     tactic = {
-        "base_freq": '15分钟',
-        "freqs": ['60分钟', '日线'],
+        "base_freq": '1分钟',
+        "freqs": ['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线'],
         "get_signals": get_signals,
         "signals_n": 0,
 
-        "long_pos": long_pos,
-        "long_events": long_events,
+        "long_pos": None,
+        "long_events": None,
 
         # 空头策略不进行定义，也就是不做空头交易
         "short_pos": None,
