@@ -71,10 +71,16 @@ def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
 
     if tri[0].high > tri[1].high < tri[2].high:
         v = Signal(k1=k1, k2=k2, k3="三K形态", v1="底分型")
+        #倒数第一根收盘价比倒数第三根最高价还高
+        if tri[2].close > tri[0].high:
+            v = Signal(k1=k1, k2=k2, k3="三K形态", v1="底分型", v2='强势')
     elif tri[0].high < tri[1].high < tri[2].high:
         v = Signal(k1=k1, k2=k2, k3="三K形态", v1="向上走")
     elif tri[0].high < tri[1].high > tri[2].high:
         v = Signal(k1=k1, k2=k2, k3="三K形态", v1="顶分型")
+        # 倒数第一根收盘价比倒数第三根最低价还低
+        if tri[2].close < tri[0].low:
+            v = Signal(k1=k1, k2=k2, k3="三K形态", v1="顶分型", v2='强势')
     elif tri[0].high > tri[1].high > tri[2].high:
         v = Signal(k1=k1, k2=k2, k3="三K形态", v1="向下走")
     else:
