@@ -12,30 +12,22 @@ import shutil
 import os
 from datetime import datetime, timedelta
 from czsc.data.ts import freq_cn_map, dt_fmt, get_all_stocks
-# from czsc.data.jq import JqCzscTrader as CzscTrader
 from czsc.objects import Signal, Factor, Event, Operate
-from czsc.utils.qywx import push_text, push_file
-from czsc.utils.io import read_pkl, save_pkl
-import requests
-import json
-from czsc.data.ts import get_kline
+from czsc.data.ts import get_kline, get_all_etfs
 import pandas as pd
 from czsc.enum import Freq
 from czsc.utils.bar_generator import BarGenerator
 from czsc.traders import CzscAdvancedTrader
 from czsc.signals.signals import get_default_signals
+from czsc.traders import create_advanced_trader
+from czsc.strategies import trader_strategy_custom
+import dill
 
 # =======================================================================================================
 # 基础参数配置
-ct_path = "/Volumes/OuGuMore/Stock/data"
+ct_path = "/Volumes/OuGuMore/Stock/etf/data"
 os.makedirs(ct_path, exist_ok=True)
-# allName = os.listdir("/Volumes/OuGuMore/Stock/data/")
-# for oneName in allName:
-#     try:
-#         os.rename("/Volumes/OuGuMore/Stock/data/"+oneName, "/Volumes/OuGuMore/Stock/data/"+oneName.split('.')[0]+'.ct')
-#     except:
-#         print()
-allStocks = get_all_stocks()
+allStocks = get_all_etfs()
 stockDf = pd.DataFrame(allStocks, columns=['ts_code', 'name'])
 
 allcodes = stockDf['ts_code'].values.tolist()
@@ -574,12 +566,15 @@ def monitor(use_cache=True):
         try:
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct) and use_cache:
-                ct: CzscAdvancedTrader = read_pkl(file_ct)
-                updateKline(ct)
+                ct: CzscAdvancedTrader = dill.load(open(file_ct, 'rb'))
+                hasChange = updateKline(ct)
             else:
-                kg = get_init_bg(s, datetime.now(), base_freq="1分钟", freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'])
-                ct = CzscAdvancedTrader(kg, get_default_signals)
-            save_pkl(ct, file_ct)
+                kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
+                                 freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'], asset='FD')
+                ct = create_advanced_trader(bg=kg, raw_bars=[], strategy=trader_strategy_custom)
+                hasChange = True
+            if hasChange:
+                dill.dump(ct, open(file_ct, 'wb'))
             # continue
             # 每次执行，会在moni_path下面保存一份快照
             # file_html = os.path.join(moni_path, f"{ct.symbol}_{ct.end_dt.strftime('%Y%m%d%H%M')}.html")
@@ -609,7 +604,8 @@ def get_init_bg(symbol: str,
                 base_freq: str,
                 freqs=('1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'),
                 max_count=1000,
-                adjust='qfq'):
+                adjust='qfq',
+                asset='E'):
     """获取 symbol 的初始化 bar generator"""
     # if isinstance(end_dt, str):
     #     end_dt = pd.to_datetime(end_dt, utc=True)
@@ -621,9 +617,10 @@ def get_init_bg(symbol: str,
     last_day = (end_dt - timedelta(days=1)).replace(hour=16, minute=0)
 
     bg = BarGenerator(base_freq, freqs, max_count)
+    bg.symbol = symbol
     if "周线" in freqs or "月线" in freqs:
         d_bars = get_kline(ts_code=symbol, start_date=last_day - timedelta(days=2500), end_date=last_day,
-                           freq=freq_cn_map["日线"])
+                           freq=freq_cn_map["日线"], asset=asset)
         bgd = BarGenerator("日线", ['周线', '月线'])
         for b in d_bars:
             bgd.update(b)
@@ -655,11 +652,11 @@ def get_init_bg(symbol: str,
             else:
                 raise ValueError(freq.value)
 
-            bars_ = get_kline(ts_code=symbol, start_date=start_dt, end_date=last_day, freq=freq_cn_map[freq], fq=fq)
+            bars_ = get_kline(ts_code=symbol, start_date=start_dt, end_date=last_day, freq=freq_cn_map[freq], fq=fq, asset=asset)
         bg.bars[freq] = bars_
         print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
 
-    bars2 = get_kline(ts_code=symbol, start_date=last_day, end_date=end_dt, freq=Freq.F1, fq=None)
+    bars2 = get_kline(ts_code=symbol, start_date=last_day, end_date=end_dt, freq=Freq.F1, fq=None, asset=asset)
     data = [x for x in bars2 if x.dt > last_day]
 
     if data:
@@ -677,6 +674,8 @@ def updateKline(trader: CzscAdvancedTrader):
         print(f"{trader.symbol}: 更新 bar generator 至 {trader.end_dt.strftime(dt_fmt)}，共有{len(data)}行数据需要update")
         for row in data:
             trader.update(row)
+        return True
+    return False
             # trader.bg.update(row)
         # trader.end_dt = trader.bg.end_dt
 

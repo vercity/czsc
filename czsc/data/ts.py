@@ -156,3 +156,6 @@ def get_ths_members(exchange="A"):
 
 def get_all_stocks():
     return pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name')
+
+def get_all_etfs():
+    return pro.fund_basic(market='E', status='L')
