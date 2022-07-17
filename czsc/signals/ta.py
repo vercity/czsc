@@ -91,6 +91,45 @@ def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
 
     return s
 
+def get_s_tingdun_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
+    """倒数第i根K线的三K信号
+
+    :param c: CZSC 对象
+    :param di: 最近一根K线为倒数第i根
+    :return: 信号字典
+    """
+    assert di >= 1
+    freq: Freq = c.freq
+    k1 = str(freq.value)
+    k2 = f"倒{di}K"
+
+    s = OrderedDict()
+    v = Signal(k1=k1, k2=k2, k3="四K形态", v1="其他", v2='其他', v3='其他')
+    s[v.key] = v.value
+
+    if len(c.bars_ubi) < 4 + di:
+        return s
+
+    if di == 1:
+        tri = c.bars_ubi[-4:]
+    else:
+        tri = c.bars_ubi[-4 - di + 1:-di + 1]
+
+    if tri[0].high > tri[1].high < tri[2].high:
+        #弱底分型 第三根收盘价小于第一根最高价
+        if (tri[2].close < tri[0].high) and (tri[3].close > max(tri[0].high, tri[1].high, tri[2].high)):
+            v = Signal(k1=k1, k2=k2, k3="四K形态", v1="底分型", v2='强势停顿')
+    elif tri[0].high < tri[1].high > tri[2].high:
+        #弱顶分型 第三根收盘价小于第一根最低价
+        if tri[2].close > tri[0].low and (tri[3].close < min(tri[0].low, tri[1].low, tri[2].low)):
+            v = Signal(k1=k1, k2=k2, k3="四K形态", v1="顶分型", v2='强势停顿')
+    else:
+        v = None
+
+    if v and "其他" not in v.value:
+        s[v.key] = v.value
+
+    return s
 
 def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """获取倒数第i根K线的MACD相关信号"""

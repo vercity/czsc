@@ -280,20 +280,30 @@ def check_nine_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Sign
                 and bi9.power < bi5.power:
             return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类一买', v2='九笔aAbBc式')
 
+        # 类三买（1~9构成大级别中枢，10离开，11回调不跌破GG）
+        gg = max([x.high for x in [bi1, bi2, bi3]])
+        zg = min([x.high for x in [bi1, bi2, bi3]])
+        zd = max([x.low for x in [bi1, bi2, bi3]])
+        dd = min([x.low for x in [bi1, bi2, bi3]])
+        if max_high == bi9.high and bi9.low > zg > zd \
+                and gg > bi5.low and gg > bi7.low \
+                and dd < bi5.high and dd < bi7.high:
+            return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三买', v2="九笔GG三买")
+
         # 类三买（1357构成中枢，最低点在3或5）
         if max_high == bi9.high > bi9.low \
                 > max([x.high for x in [bi1, bi3, bi5, bi7]]) \
                 > min([x.high for x in [bi1, bi3, bi5, bi7]]) \
                 > max([x.low for x in [bi1, bi3, bi5, bi7]]) \
                 > min([x.low for x in [bi3, bi5]]) == min_low:
-            return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三买', v2='九笔GG三买')
+            return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三买', v2='九笔GG三买1')
 
         # 类三买（357构成中枢，8的力度小于2，9回调不跌破GG构成三买）
         if bi8.power < bi2.power and max_high == bi9.high > bi9.low \
                 > max([x.high for x in [bi3, bi5, bi7]]) \
                 > min([x.high for x in [bi3, bi5, bi7]]) \
                 > max([x.low for x in [bi3, bi5, bi7]]) > bi1.low == min_low:
-            return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三买', v2='九笔GG三买')
+            return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三买', v2='九笔GG三买2')
 
         if min_low == bi5.low and max_high == bi1.high and bi4.high < bi2.low:  # 前五笔构成向下类趋势
             zd = max([x.low for x in [bi5, bi7]])
@@ -483,6 +493,16 @@ def check_thirteen_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> 
                     and bi1.high - bi5.low > bi11.high - bi13.low:
                 return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类一买', v2="13笔A5B5C3式")
 
+            # 类三买（1~11构成大级别中枢，10离开，11回调不跌破GG）
+            gg = max([x.high for x in [bi1, bi2, bi3]])
+            zg = min([x.high for x in [bi1, bi2, bi3]])
+            zd = max([x.low for x in [bi1, bi2, bi3]])
+            dd = min([x.low for x in [bi1, bi2, bi3]])
+            if max_high == bi13.high and bi13.low > zg > zd \
+                    and gg > bi5.low and gg > bi7.low and gg > bi9.low and gg > bi11.low\
+                    and dd < bi5.high and dd < bi7.high and dd < bi9.high and dd < bi11.high:
+                return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三买', v2="13笔GG三买")
+
     if direction == Direction.Up:
         if max_high == bi13.high and min_low == bi1.low:
             # ABC式类一卖，A5B3C5
@@ -666,11 +686,20 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
             s[v.key] = v.value
 
         # 倒0笔长度
+        # 原来是分型最左边，理论上底分型完成，倒0笔长度是3？
         bars_ubi = [x for x in c.bars_raw[-20:] if x.dt >= bis[-1].fx_b.elements[0].dt]
         if len(bars_ubi) >= 9:
             v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="9根K线以上")
         elif 9 > len(bars_ubi) > 5:
             v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="5到9根K线")
+        elif len(bars_ubi) == 4:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="4根K线")
+        elif len(bars_ubi) == 3:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="3根K线")
+        elif len(bars_ubi) == 2:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="2根K线")
+        elif len(bars_ubi) == 1:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="1根K线")
         else:
             v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="5根K线以下")
 

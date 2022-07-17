@@ -11,22 +11,22 @@ sys.path.insert(0, '..')
 import pandas as pd
 from czsc.data.ts_cache import TsDataCache
 from czsc.traders.ts_backtest import TsStocksBacktest
-from examples import tactics
-
+# from examples import tactics
+from czsc.strategies import trader_strategy_backtest as strategy
 
 pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_rows', 1000)
 pd.set_option('display.max_columns', 20)
 
-data_path = "/Volumes/OuGuMore/Stock/sensors"
-dc = TsDataCache(data_path, sdt='2020-01-01', edt='20211216', verbose=False)
+data_path = "/Volumes/OuGuMore/Stock/backtest"
+dc = TsDataCache(data_path, sdt='2020-01-01', edt='20211216', refresh=False)
 
 
 if __name__ == '__main__':
-    tsb = TsStocksBacktest(dc=dc, strategy=tactics.trader_strategy_a, sdt='20140101', edt="20211216", init_n=1000*4)
+    tsb = TsStocksBacktest(dc=dc, strategy=strategy, sdt='20140101', edt="20220513", init_n=1000*4)
     # tsb.batch_backtest('check')
-    tsb.batch_backtest('index')
+    # tsb.batch_backtest('index')
     # tsb.batch_backtest('train')
     # tsb.batch_backtest('valid')
-    # tsb.batch_backtest('stock')
+    tsb.batch_backtest('stock')
 

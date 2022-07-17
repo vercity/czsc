@@ -13,9 +13,10 @@ from collections import OrderedDict
 from czsc.traders import CzscAdvancedTrader
 from czsc.objects import PositionLong, PositionShort, RawBar
 from czsc.signals.bxt import get_s_like_bs, get_s_d0_bi, get_s_bi_status, get_s_di_bi, get_s_base_xt, get_s_three_bi
-from czsc.signals.ta import get_s_single_k, get_s_three_k, get_s_sma, get_s_macd
+from czsc.signals.ta import get_s_single_k, get_s_three_k, get_s_sma, get_s_macd, get_s_tingdun_k
 
-def trader_standard(symbol, T0=False, min_interval=3600*4):
+
+def trader_standard(symbol, T0=False, min_interval=3600 * 4):
     """择时策略编写的一些标准说明
 
     输入参数：
@@ -30,7 +31,7 @@ def trader_standard(symbol, T0=False, min_interval=3600*4):
     pass
 
 
-def trader_example1(symbol, T0=False, min_interval=3600*4):
+def trader_example1(symbol, T0=False, min_interval=3600 * 4):
     """A股市场择时策略样例，支持按交易标的独立设置参数
 
     :param symbol:
@@ -38,6 +39,7 @@ def trader_example1(symbol, T0=False, min_interval=3600*4):
     :param min_interval: 最小开仓时间间隔，单位：秒
     :return:
     """
+
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         s.update(signals.pos.get_s_long01(cat, th=100))
@@ -99,6 +101,7 @@ def trader_example1(symbol, T0=False, min_interval=3600*4):
 
 def trader_strategy_a(symbol):
     """A股市场择时策略A"""
+
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         s.update(signals.pos.get_s_long01(cat, th=100))
@@ -117,7 +120,7 @@ def trader_strategy_a(symbol):
 
     # 定义多头持仓对象和交易事件
     long_pos = PositionLong(symbol, hold_long_a=1, hold_long_b=1, hold_long_c=1,
-                            T0=False, long_min_interval=3600*4)
+                            T0=False, long_min_interval=3600 * 4)
     long_events = [
         Event(name="开多", operate=Operate.LO, factors=[
             Factor(name="低吸", signals_all=[
@@ -156,6 +159,7 @@ def trader_strategy_a(symbol):
 
     return tactic
 
+
 def trader_strategy_custom(symbol):
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
 
@@ -165,10 +169,12 @@ def trader_strategy_custom(symbol):
             dictMerge = OrderedDict()
 
         for oneFreq in cat.kas.keys():
-            s = OrderedDict({"symbol": cat.kas[oneFreq].symbol, "dt": cat.kas[oneFreq].bars_raw[-1].dt, "close": cat.kas[oneFreq].bars_raw[-1].close})
+            s = OrderedDict({"symbol": cat.kas[oneFreq].symbol, "dt": cat.kas[oneFreq].bars_raw[-1].dt,
+                             "close": cat.kas[oneFreq].bars_raw[-1].close})
             s.update(get_s_d0_bi(cat.kas[oneFreq]))
             s.update(get_s_three_k(cat.kas[oneFreq], 1))
-            s.update(get_s_di_bi(cat.kas[oneFreq], 1))
+            s.update(get_s_tingdun_k(cat.kas[oneFreq], 1))
+            # s.update(get_s_di_bi(cat.kas[oneFreq], 1))
             s.update(get_s_macd(cat.kas[oneFreq], 1))
             s.update(get_s_single_k(cat.kas[oneFreq], 1))
             s.update(get_s_bi_status(cat.kas[oneFreq]))
@@ -227,3 +233,83 @@ def trader_strategy_custom(symbol):
 
     return tactic
 
+
+def trader_strategy_backtest(symbol):
+    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+
+        if cat.s:
+            dictMerge = cat.s.copy()
+        else:
+            dictMerge = OrderedDict()
+
+        for oneFreq in cat.kas.keys():
+            s = OrderedDict({"symbol": cat.kas[oneFreq].symbol, "dt": cat.kas[oneFreq].bars_raw[-1].dt,
+                             "close": cat.kas[oneFreq].bars_raw[-1].close})
+            s.update(get_s_d0_bi(cat.kas[oneFreq]))
+            s.update(get_s_three_k(cat.kas[oneFreq], 1))
+            s.update(get_s_tingdun_k(cat.kas[oneFreq], 1))
+            # s.update(get_s_di_bi(cat.kas[oneFreq], 1))
+            s.update(get_s_macd(cat.kas[oneFreq], 1))
+            s.update(get_s_single_k(cat.kas[oneFreq], 1))
+            s.update(get_s_bi_status(cat.kas[oneFreq]))
+
+            for di in range(1, 8):
+                s.update(get_s_three_bi(cat.kas[oneFreq], di))
+
+            for di in range(1, 8):
+                s.update(get_s_base_xt(cat.kas[oneFreq], di))
+
+            for di in range(1, 8):
+                s.update(get_s_like_bs(cat.kas[oneFreq], di))
+
+            dictMerge.update(s)
+
+        return dictMerge
+
+    # 定义多头持仓对象和交易事件
+    long_pos = PositionLong(symbol, hold_long_a=1, hold_long_b=1, hold_long_c=1,
+                            T0=False, long_min_interval=3600 * 4)
+    long_events = [
+        Event(name="开多", operate=Operate.LO, factors=[
+            Factor(name="三买", signals_all=[
+                # Signal("开多时间范围_13:00_14:50_是_任意_任意_0"),
+                # Signal("15分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
+                # Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
+                # Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
+                # Signal("15分钟_倒0笔_长度_5根K线以下_任意_任意_0"),
+                # Signal("日线_倒1K_DIF回抽_0轴_任意_任意_0"),
+                Signal("日线_倒1K_MACD方向_向上_任意_任意_0"),
+            ], signals_any=[
+                Signal("日线_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"),
+                Signal("日线_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
+                Signal("日线_倒1笔_类买卖点_类三买_13笔GG三买_任意_0"),
+            ]),
+        ]),
+
+        Event(name="平多", operate=Operate.LE, factors=[
+            Factor(name="持有资金", signals_all=[
+                # Signal("平多时间范围_09:35_14:50_是_任意_任意_0"),
+                Signal("日线_倒1K_四K形态_顶分型_强势停顿_任意_0"),
+                # Signal("日线_倒1笔_类买卖点_类一卖_任意_任意_0"),
+            ], signals_not=[
+                # Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
+                # Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
+            ]),
+        ]),
+    ]
+
+    tactic = {
+        "base_freq": '15分钟',
+        "freqs": ['日线'],
+        "get_signals": get_signals,
+        "signals_n": 0,
+
+        "long_pos": long_pos,
+        "long_events": long_events,
+
+        # 空头策略不进行定义，也就是不做空头交易
+        "short_pos": None,
+        "short_events": None,
+    }
+
+    return tactic

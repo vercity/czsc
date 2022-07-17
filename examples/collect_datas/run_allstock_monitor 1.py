@@ -48,10 +48,21 @@ allcodes = stockDf['ts_code'].values.tolist()
 # print(stockDf)
 
 events_monitor = [
-    # 五笔aAb式
-    Event(name="五笔aAb式买", operate=Operate.LO, factors=[
-        Factor(name="日线_aAb式买", signals_all=[Signal("日线_倒1笔_基础形态_底背驰_五笔aAb式_任意_0")]),
+    Event(name="底分型停顿", operate=Operate.LO, factors=[
+        Factor(name="日线_底分型停顿", signals_all=[Signal("日线_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+        # Factor(name="30分钟_底分型停顿", signals_all=[Signal("30分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+        # Factor(name="15分钟_底分型停顿", signals_all=[Signal("15分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+        # Factor(name="5分钟_底分型停顿", signals_all=[Signal("5分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+        # Factor(name="60分钟_底分型停顿", signals_all=[Signal("60分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
     ]),
+
+    # Event(name="底分型强势", operate=Operate.LO, factors=[
+    #     Factor(name="日线_底分型强势", signals_all=[Signal("日线_倒1K_三K形态_底分型_强势_任意_0")]),
+    #     Factor(name="30分钟_底分型强势", signals_all=[Signal("30分钟_倒1K_三K形态_底分型_强势_任意_0")]),
+    #     Factor(name="15分钟_底分型强势", signals_all=[Signal("15分钟_倒1K_三K形态_底分型_强势_任意_0")]),
+    #     Factor(name="5分钟_底分型强势", signals_all=[Signal("5分钟_倒1K_三K形态_底分型_强势_任意_0")]),
+    #     Factor(name="60分钟_底分型强势", signals_all=[Signal("60分钟_倒1K_三K形态_底分型_强势_任意_0")]),
+    # ]),
 ]
 
 
@@ -66,6 +77,8 @@ def monitor(needCacheStocks, use_cache=True):
     # print(len(symbols))
     k = 1
     for s in needCacheStocks:
+        if s.endswith('BJ'):
+            continue
         print(k)
         k += 1
         try:

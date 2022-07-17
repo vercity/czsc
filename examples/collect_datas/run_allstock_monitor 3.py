@@ -67,6 +67,8 @@ def monitor(needCacheStocks, use_cache=True):
     k = 1
     for s in needCacheStocks:
         print(k)
+        if s.endswith('BJ'):
+            continue
         k += 1
         try:
             file_ct = os.path.join(ct_path, "{}.ct".format(s))

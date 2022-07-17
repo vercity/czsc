@@ -17,10 +17,10 @@ pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_rows', 1000)
 pd.set_option('display.max_columns', 20)
 
-data_path = r"C:\ts_data_czsc"
-dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-02-18')
+data_path = r"/Volumes/OuGuMore/Stock/backtest"
+# dc = TsDataCache(data_path, sdt='2020-01-01', edt='2022-02-18')
 freq = freq_cn2ts[strategy('000001.SH')['base_freq']]
-sdt = '20140101'
+sdt = '20200101'
 edt = "20211216"
 init_n = 1000*4
 
@@ -56,9 +56,13 @@ def run_more_backtest(step, ts_codes):
 
 
 if __name__ == '__main__':
+    dc2 = TsDataCache(data_path, sdt='2012-01-01', edt='2022-02-18')
+    dc2.pro_bar(ts_code='000001.SZ', start_date="20120101", end_date='20220218', freq='15min')
+
+
     # run_more_backtest(step='check', ts_codes=['000002.SZ'])
     # run_backtest(step_seq=('index',))
-    run_backtest(step_seq=('etfs',))
+    # run_backtest(step_seq=('etfs',))
     # run_backtest(step_seq=('index', 'train'))
     # run_backtest(step_seq=('check', 'index', 'train'))
     # run_backtest(step_seq=('check', 'index', 'train', 'valid'))
