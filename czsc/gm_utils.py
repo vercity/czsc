@@ -25,7 +25,7 @@ from czsc.objects import RawBar, Event, Freq, Operate, PositionLong, PositionSho
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y-%m-%d"
 
-assert czsc.__version__ >= "0.8.25"
+assert czsc.__version__ >= "0.8.27"
 
 
 def set_gm_token(token):
@@ -496,28 +496,39 @@ def report_account_status(context):
 
             row = {'交易标的': symbol, '标的名称': name,
                    '最新时间': trader.end_dt.strftime(dt_fmt),
-                   '最新价格': trader.latest_price,
-                   '多头持仓': 0, '多头成本': 0, '开仓时间': None,
-                   "实盘持仓数量": 0,  "实盘持仓成本": 0, "实盘持仓市值": 0}
+                   '最新价格': trader.latest_price}
+
+            if "日线" in trader.kas.keys():
+                bar1, bar2 = trader.kas['日线'].bars_raw[-2:]
+                row.update({'昨日收盘': round(bar1.close, 2),
+                            '今日涨幅': round(bar2.close / bar1.close - 1, 4)})
 
             if trader.long_pos.pos > 0:
                 row.update({'多头持仓': trader.long_pos.pos,
                             '多头成本': trader.long_pos.long_cost,
-                            '开仓时间': trader.long_pos.operates[-1]['dt'].strftime(dt_fmt)})
+                            '多头收益': round(trader.latest_price / trader.long_pos.long_cost - 1, 4),
+                            '开多时间': trader.long_pos.operates[-1]['dt'].strftime(dt_fmt)})
+            else:
+                row.update({'多头持仓': 0, '多头成本': 0, '多头收益': 0, '开多时间': None})
 
             if p:
                 row.update({"实盘持仓数量": p.volume,
                             "实盘持仓成本": x_round(p.vwap, 2),
                             "实盘持仓市值": int(p.volume * p.vwap)})
+            else:
+                row.update({"实盘持仓数量": 0,  "实盘持仓成本": 0, "实盘持仓市值": 0})
+
             results.append(row)
 
         df = pd.DataFrame(results)
-        df['多头收益'] = df.apply(lambda x: x_round(x['最新价格'] / x['多头成本'] - 1) if x['多头持仓'] > 0 else 0, axis=1)
         df.sort_values(['多头持仓', '多头收益'], ascending=False, inplace=True, ignore_index=True)
         file_xlsx = os.path.join(context.data_path, f"holds_{context.now.strftime('%Y%m%d_%H%M')}.xlsx")
         df.to_excel(file_xlsx, index=False)
         wx.push_file(file_xlsx, key=context.wx_key)
         os.remove(file_xlsx)
+
+        # 提示非策略交易标的持仓
+        process_out_of_symbols(context)
 
 
 def sync_long_position(context, trader: CzscAdvancedTrader):
@@ -662,7 +673,6 @@ def sync_short_position(trader: CzscAdvancedTrader, context):
 
 
 def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
-                     get_signals: Callable = None,
                      freqs=('1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'),
                      adjust=ADJUST_PREV, max_count=1000):
     """使用掘金的数据对任意标的、任意时刻的状态进行快照
@@ -670,7 +680,6 @@ def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
     :param gm_symbol:
     :param end_dt:
     :param file_html:
-    :param get_signals:
     :param freqs:
     :param adjust:
     :param max_count:
@@ -680,7 +689,7 @@ def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
         end_dt = datetime.now().strftime(dt_fmt)
 
     bg, data = get_init_bg(gm_symbol, end_dt, freqs[0], freqs[1:], max_count, adjust)
-    ct = CzscAdvancedTrader(bg, get_signals=get_signals)
+    ct = CzscAdvancedTrader(bg)
     for bar in data:
         ct.update(bar)
 
@@ -785,12 +794,12 @@ def init_context_universal(context, name):
     :param name: 交易策略名称，建议使用英文
     """
     path_gm_logs = os.environ.get('path_gm_logs', None)
-    assert os.path.exists(path_gm_logs)
     if context.mode == MODE_BACKTEST:
         data_path = os.path.join(path_gm_logs, f"backtest/{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
     else:
         data_path = os.path.join(path_gm_logs, f"realtime/{name}")
     os.makedirs(data_path, exist_ok=True)
+
     context.name = name
     context.data_path = data_path
     context.stocks = get_stocks()
@@ -889,7 +898,7 @@ def init_context_schedule(context):
 
     # 以下是 实盘/仿真 模式下的定时任务
     if context.mode != MODE_BACKTEST:
-        schedule(schedule_func=process_out_of_symbols, date_rule='1d', time_rule='09:40:00')
         schedule(schedule_func=save_traders, date_rule='1d', time_rule='11:40:00')
         schedule(schedule_func=save_traders, date_rule='1d', time_rule='15:10:00')
         # schedule(schedule_func=realtime_check_index_status, date_rule='1d', time_rule='17:30:00')
+        # schedule(schedule_func=process_out_of_symbols, date_rule='1d', time_rule='09:40:00')
