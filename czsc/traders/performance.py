@@ -9,6 +9,7 @@ import glob
 import traceback
 import pandas as pd
 from tqdm import tqdm
+from loguru import logger
 from czsc.traders.advanced import CzscAdvancedTrader
 from czsc.utils import dill_load
 from czsc.objects import cal_break_even_point
@@ -49,9 +50,7 @@ class PairsPerformance:
 
         self.df_pairs = df_pairs
         # 指定哪些列可以用来进行聚合分析
-        self.agg_columns = ['标的代码', '交易方向',
-                            '平仓年', '平仓月', '平仓周', '平仓日',
-                            '开仓年', '开仓月', '开仓日', '开仓周']
+        self.agg_columns = ['标的代码', '交易方向', '平仓年', '平仓月', '平仓周', '平仓日', '开仓年', '开仓月', '开仓日', '开仓周']
 
     @staticmethod
     def get_pairs_statistics(df_pairs: pd.DataFrame):
@@ -75,8 +74,11 @@ class PairsPerformance:
 
                 "交易胜率": 0,
                 "累计盈亏比": 0,
+                "单笔盈亏比": 0,
                 "交易得分": 0,
+                "赢面": 0,
                 "每自然日收益": 0,
+                "每根K线收益": 0,
                 "盈亏平衡点": 0,
             }
             return info
@@ -84,11 +86,10 @@ class PairsPerformance:
         win_pct = round(len(df_pairs[df_pairs['盈亏比例'] > 0]) / len(df_pairs), 4)
         df_gain = df_pairs[df_pairs['盈亏比例'] > 0]
         df_loss = df_pairs[df_pairs['盈亏比例'] <= 0]
-        gain = df_gain['盈亏比例'].sum()
-        loss = abs(df_loss['盈亏比例'].sum())
 
-        # 限制累计盈亏比最大有效值
-        gain_loss_rate = min(round(gain / (loss + 0.000001), 2), 5)
+        # 限制盈亏比最大有效值为 5
+        single_gain_loss_rate = min(round(df_gain['盈亏比例'].mean() / (abs(df_loss['盈亏比例'].mean()) + 1e-8), 2), 5)
+        total_gain_loss_rate = min(round(df_gain['盈亏比例'].sum() / (abs(df_loss['盈亏比例'].sum()) + 1e-8), 2), 5)
 
         info = {
             "开始时间": df_pairs['开仓时间'].min(),
@@ -97,6 +98,7 @@ class PairsPerformance:
             "交易标的数量": df_pairs['标的代码'].nunique(),
             "总体交易次数": len(df_pairs),
             "平均持仓天数": round(df_pairs['持仓天数'].mean(), 2),
+            "平均持仓K线数": round(df_pairs['持仓K线数'].mean(), 2),
 
             "平均单笔收益": round(df_pairs['盈亏比例'].mean() * 10000, 2),
             "单笔收益标准差": round(df_pairs['盈亏比例'].std() * 10000, 2),
@@ -104,12 +106,15 @@ class PairsPerformance:
             "最小单笔收益": round(df_pairs['盈亏比例'].min() * 10000, 2),
 
             "交易胜率": win_pct,
-            "累计盈亏比": gain_loss_rate,
-            "交易得分": round(gain_loss_rate * win_pct, 4),
+            "单笔盈亏比": single_gain_loss_rate,
+            "累计盈亏比": total_gain_loss_rate,
+            "交易得分": round(total_gain_loss_rate * win_pct, 4),
+            "赢面": round(single_gain_loss_rate * win_pct - (1 - win_pct), 4),
             "盈亏平衡点": round(cal_break_even_point(df_pairs['盈亏比例'].to_list()), 4),
         }
 
         info['每自然日收益'] = round(info['平均单笔收益'] / info['平均持仓天数'], 2)
+        info['每根K线收益'] = round(info['平均单笔收益'] / info['平均持仓K线数'], 2)
         return info
 
     def agg_statistics(self, col: str):
@@ -141,7 +146,7 @@ class PairsPerformance:
             df_ = self.agg_statistics(col)
             df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
         f.close()
-        print(f"聚合分析结果文件：{file_xlsx}")
+        logger.info(f"交易次数：{len(self.df_pairs)}; 聚合分析结果文件：{file_xlsx}")
 
 
 class TradersPerformance:
@@ -192,8 +197,7 @@ class TradersPerformance:
                 _lh = [x for x in trader.long_holds if edt >= x['dt'] >= sdt]
                 _results.extend(_lh)
             except:
-                print(file)
-                traceback.print_exc()
+                logger.exception(f"分析失败：{file}")
         df = pd.DataFrame(_results)
         return df
 

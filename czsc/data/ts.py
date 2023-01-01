@@ -39,6 +39,7 @@ date_fmt = "%Y%m%d"
 
 try:
     pro = ts.pro_api()
+    # ts.set_token("a6d79c0088c6d2bb619fa9dfbdf72287800d1689f2f33653bd938995")
 except:
     print("Tushare Pro 初始化失败")
 

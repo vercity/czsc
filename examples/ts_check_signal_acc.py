@@ -9,11 +9,12 @@ describe: 验证信号计算的准确性，仅适用于缠论笔相关的信号�
 import os
 from collections import OrderedDict
 from czsc.data.ts_cache import TsDataCache
-from czsc import signals
 from czsc import CzscAdvancedTrader
 from czsc.objects import Signal, Freq
 from czsc.sensors.utils import check_signals_acc
+from czsc import signals
 
+# from src import signals
 
 os.environ['czsc_verbose'] = '1'
 
@@ -29,6 +30,15 @@ def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     for _, c in cat.kas.items():
         if c.freq == Freq.F5:
             s.update(signals.bxt.get_s_like_bs(c, di=1))
+    s.update(signals.bxt.get_s_base_xt(cat.kas['日线']))
+
+    # 使用缓存来更新信号的方法
+    # signals.example.update_macd_cache(cat, '日线')
+    # s.update(signals.example.macd_base(cat, '日线'))
+
+    # for _, c in cat.kas.items():
+    #     if c.freq == Freq.F5:
+    #         s.update(signals.bxt.get_s_like_bs(c, di=1))
     return s
 
 

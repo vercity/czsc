@@ -637,14 +637,14 @@ def monitor(use_cache=True):
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct) and use_cache:
                 ct: CzscAdvancedTrader = dill.load(open(file_ct, 'rb'))
-                hasChange = updateKline(ct)
+                # hasChange = updateKline(ct)
             else:
                 kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
                                  freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'])
                 ct = create_advanced_trader(bg=kg, raw_bars=[], strategy=trader_strategy_custom)
                 hasChange = True
-            if hasChange:
-                dill.dump(ct, open(file_ct, 'wb'))
+            # if hasChange:
+            #     dill.dump(ct, open(file_ct, 'wb'))
             # continue
             # 每次执行，会在moni_path下面保存一份快照
             # file_html = os.path.join(moni_path, f"{ct.symbol}_{ct.end_dt.strftime('%Y%m%d%H%M')}.html")

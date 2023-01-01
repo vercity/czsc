@@ -6,7 +6,7 @@
 [![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
 [![PyPI](https://img.shields.io/pypi/v/czsc.svg)](https://pypi.org/project/czsc/)
 
->源于[缠中说缠博客（已经无法访问了）](http://blog.sina.com.cn/chzhshch)，访问原文[点击](http://www.fxgan.com/)
+>源于[缠中说缠博客（已经无法访问了）](http://blog.sina.com.cn/chzhshch)，访问原文[点击](http://www.fxgan.com/)，[缠中说禅博客原文研读](https://t.zsxq.com/04B2jmUN7)
 
 >**假如没有了分型、笔、线段，缠论还是缠论吗？如果你的答案是“是”，这个项目是为你准备的。本项目旨在提供一个符合缠中说禅思维方式的程序化交易工具。**
 
@@ -32,7 +32,7 @@
 
 >为什么要去了解其他理论，就是这些理论操作者的行为模式，将构成以后我们猎杀的对象，他们操作模式的缺陷，就是以后猎杀他们的最好武器，这就如同学独孤九剑，必须学会发现所有派别招数的缺陷，这也是本ID理论学习中一个极为关键的步骤。
 
-信号开源计划旨在为缠论学习者提供一批其他理论对应的信号计算函数，供各位以量化的方式研究其他理论的缺陷和价值。这个计划的工作量极大，需要各位的参与。有意愿加入的朋友，请加微信 `zengbin93`，备注 **【CZSC信号】** 。
+信号开源计划旨在为缠论学习者提供一批其他理论对应的信号计算函数，供各位以量化的方式研究其他理论的缺陷和价值。这个计划的工作量极大，需要各位的参与。有意愿加入的朋友，请点击查看详情：**[CZSC信号开源计划介绍](https://s0cqcxuy3p.feishu.cn/wiki/wikcnx7707hlakYMi4HmxdAIHJg)**
 
 
 ## 使用前必看
@@ -53,7 +53,7 @@
 
 ## 使用案例
 
->案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，说明是CZSC用户，1500元可以开通CZSC项目目前用到的全部数据权限。
+>案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，备注：**CZSC用户**，1500元可以开通CZSC项目目前用到的全部数据权限。
 >掘金终端主要用于交易策略的实盘跟踪，[点击了解](https://www.myquant.cn/)。
 
 * `examples/ts_fast_backtest.py` 股票市场择时策略快速回测
