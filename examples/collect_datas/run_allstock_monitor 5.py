@@ -23,7 +23,6 @@ import pandas as pd
 from czsc.enum import Freq
 from czsc.utils.bar_generator import BarGenerator
 from czsc.traders import CzscAdvancedTrader
-from czsc.signals.signals import get_default_signals
 from czsc.traders import create_advanced_trader
 from czsc.strategies import trader_strategy_custom
 import dill

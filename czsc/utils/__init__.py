@@ -6,14 +6,15 @@ from . import ta
 from . import io
 from . import log
 from . import echarts_plot
-from . import fei_shu
 
 from .echarts_plot import kline_pro, heat_map
 from .log import create_logger
 from .word_writer import WordWriter
-from .corr import nmi_matrix
+from .corr import nmi_matrix, single_linear
 from .bar_generator import BarGenerator, freq_end_time
 from .io import dill_dump, dill_load, read_json, save_json
+from .sig import check_pressure_support, check_gap_info, is_bis_down, is_bis_up, get_sub_elements
+from .sig import same_dir_counts, fast_slow_cross
 
 
 def x_round(x: [float, int], digit=4):
@@ -34,7 +35,7 @@ def x_round(x: [float, int], digit=4):
     return x
 
 
-def get_namespace(file_py: str, keys: list = None) -> dict:
+def get_py_namespace(file_py: str, keys: list = None) -> dict:
     """获取 python 脚本文件中的 namespace
 
     :param file_py: python 脚本文件名

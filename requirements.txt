@@ -12,9 +12,10 @@ seaborn
 Deprecated>=1.2.12
 scikit-learn>=0.24.1
 dill
-gm
-
 openpyxl
 pyarrow
 loguru>=0.6.0
 click
+pytest
+tenacity>=8.1.0
+requests-toolbelt>=0.10.1

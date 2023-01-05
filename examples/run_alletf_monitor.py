@@ -18,7 +18,6 @@ import pandas as pd
 from czsc.enum import Freq
 from czsc.utils.bar_generator import BarGenerator
 from czsc.traders import CzscAdvancedTrader
-from czsc.signals.signals import get_default_signals
 from czsc.traders import create_advanced_trader
 from czsc.strategies import trader_strategy_custom
 import dill
@@ -242,6 +241,14 @@ events_monitor = [
     #     Factor(name="60分钟_潜在三买", signals_all=[Signal("60分钟_倒0笔_潜在三买_构成中枢_近3K在中枢上沿附近_任意_0")]),
     #     Factor(name="周线_潜在三买", signals_all=[Signal("周线_倒0笔_潜在三买_构成中枢_近3K在中枢上沿附近_近7K突破中枢GG_0")]),
     # ]),
+
+    Event(name="三买回踩", operate=Operate.LO, factors=[
+        Factor(name="日线_30分钟_三买回踩", signals_all=[Signal("日线_30分钟_三买回踩10_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="中枢共振", operate=Operate.LO, factors=[
+        Factor(name="日线_30分钟_中枢共振", signals_all=[Signal("日线_30分钟_中枢共振_看多_任意_任意_0")]),
+    ]),
 ]
 
 

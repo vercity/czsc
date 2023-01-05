@@ -8,7 +8,8 @@ import pandas as pd
 from tqdm import tqdm
 from collections import OrderedDict
 from czsc import signals
-from czsc.traders.advanced import CzscAdvancedTrader, BarGenerator
+from czsc.utils import BarGenerator
+from czsc.traders import CzscAdvancedTrader
 from czsc.objects import Signal, Factor, Event, Operate, PositionLong, PositionShort
 from test.test_analyze import read_1min, read_daily
 
@@ -140,7 +141,7 @@ def run_advanced_trader(T0=True):
         return trader_strategy_test(symbol, T0=T0)
     ct = CzscAdvancedTrader(kg, _strategy)
 
-    assert len(ct.s) == 28
+    assert len(ct.s) == 29
     for row in tqdm(bars[150000:], desc="trade"):
         ct.update(row)
         # if long_pos.pos_changed:

@@ -5,15 +5,17 @@ email: zeng_bin8888@163.com
 create_dt: 2021/6/25 18:52
 """
 import time
+import json
+import requests
 import pandas as pd
 import tushare as ts
 from deprecated import deprecated
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
-from tqdm import tqdm
+from functools import partial
+from loguru import logger
 
-from ..analyze import RawBar
-from ..enum import Freq
+from czsc.objects import RawBar, Freq
 
 
 # 数据频度 ：支持分钟(min)/日(D)/周(W)/月(M)K线，其中1min表示1分钟（类推1/5/15/30/60分钟）。
@@ -22,24 +24,58 @@ freq_map = {Freq.F1: "1min", Freq.F5: '5min', Freq.F15: "15min", Freq.F30: '30mi
             Freq.F60: "60min", Freq.D: 'D', Freq.W: "W", Freq.M: "M"}
 freq_cn_map = {"1分钟": Freq.F1, "5分钟": Freq.F5, "15分钟": Freq.F15, "30分钟": Freq.F30,
                "60分钟": Freq.F60, "日线": Freq.D}
-exchanges = {
-    "SSE": "上交所",
-    "SZSE": "深交所",
-    "CFFEX": "中金所",
-    "SHFE": "上期所",
-    "CZCE": "郑商所",
-    "DCE": "大商所",
-    "INE": "能源",
-    "IB": "银行间",
-    "XHKG": "港交所"
-}
-
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y%m%d"
+
+
+class TushareProApi:
+    __token = ''
+    __http_url = 'http://api.waditu.com'
+
+    def __init__(self, token, timeout=30):
+        """
+        Parameters
+        ----------
+        token: str
+            API接口TOKEN，用于用户认证
+        """
+        self.__token = token
+        self.__timeout = timeout
+
+    def query(self, api_name, fields='', **kwargs):
+        if api_name in ['__getstate__', '__setstate__']:
+            return pd.DataFrame()
+
+        req_params = {
+            'api_name': api_name,
+            'token': self.__token,
+            'params': kwargs,
+            'fields': fields
+        }
+
+        res = requests.post(self.__http_url, json=req_params, timeout=self.__timeout)
+        if res:
+            result = json.loads(res.text)
+            if result['code'] != 0:
+                logger.warning(f"{req_params}: {result}")
+                raise Exception(result['msg'])
+
+            data = result['data']
+            columns = data['fields']
+            items = data['items']
+            return pd.DataFrame(items, columns=columns)
+        else:
+            return pd.DataFrame()
+
+    def __getattr__(self, name):
+        return partial(self.query, name)
+
 
 try:
     pro = ts.pro_api()
     # ts.set_token("a6d79c0088c6d2bb619fa9dfbdf72287800d1689f2f33653bd938995")
+    # from tushare.util import upass
+    # pro = TushareProApi(upass.get_token(), timeout=60)
 except:
     print("Tushare Pro 初始化失败")
 

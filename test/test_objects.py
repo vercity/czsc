@@ -1,9 +1,32 @@
 # coding: utf-8
-from collections import OrderedDict
 import pandas as pd
+import numpy as np
+from collections import OrderedDict
 from czsc.utils import x_round
 from czsc.objects import Signal, Factor, Event, Freq, Operate, PositionLong, PositionShort
-from czsc.objects import cal_break_even_point
+from czsc.objects import cal_break_even_point, RawBar
+
+
+def test_raw_bar():
+    from test.test_analyze import read_daily
+    from czsc.utils.ta import SMA
+    bars = read_daily()
+    ma = SMA(np.array([x.close for x in bars]), 5)
+    key = "SMA5"
+
+    # 技术指标的全部更新
+    for i in range(1, len(bars)+1):
+        c = dict(bars[-i].cache) if bars[-i].cache else dict()
+        c.update({key: ma[-i]})
+        bars[-i].cache = c
+    assert np.array([x.cache[key] for x in bars]).sum() == ma.sum()
+
+    # 技术指标的部分更新
+    for i in range(1, 101):
+        c = dict(bars[-i].cache) if bars[-i].cache else dict()
+        c.update({key: ma[-i] + 2})
+        bars[-i].cache = c
+    assert np.array([x.cache[key] for x in bars]).sum() == ma.sum() + 200
 
 
 def test_cal_break_even_point():
@@ -61,6 +84,10 @@ def test_factor():
         ]
     )
     assert factor.is_match(s)
+
+    factor_raw = factor.dump()
+    new_factor = Factor.load(factor_raw)
+    assert new_factor.is_match(s)
 
     factor = Factor(
         name="单测",
@@ -123,6 +150,11 @@ def test_event():
         Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向上", v2='其他', v3='其他'),
     ])
     m, f = event.is_match(s)
+    assert m and f
+
+    raw = event.dump()
+    new_event = Event.load(raw)
+    m, f = new_event.is_match(s)
     assert m and f
 
     event = Event(name="单测", operate=Operate.LO,
