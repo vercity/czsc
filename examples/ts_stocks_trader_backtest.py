@@ -49,8 +49,11 @@ kCountThree = '3根K线'
 kCountFour = '4根K线'
 zhongshugongzhenkanduo = "看多"
 
+gaokaiNextDay = 0
+dikaiNextDay = 0
 
 def dingmessage(dingMessage):
+    return
     # 请求的URL，WebHook地址
     webhook = "https://oapi.dingtalk.com/robot/send?access_token=48c7a649e0f1b4be1e699461a93e6392010074b07f48c60c058927b8f406423a"
     # 构建请求头部
@@ -86,9 +89,11 @@ if __name__ == '__main__':
         if oneStock.endswith('BJ'):
             continue
         count += 1
+        oneStock = '000023.SZ'
         print(count)
         print(oneStock)
-        for oneEndDate in  [date for date in trade_dates if int(date) > 20150101]:
+        buyPointsDt = []
+        for oneEndDate in  [date for date in trade_dates if int(date) > 20200801]:
             if int(oneEndDate) > 20230110:
                 continue
             dataCache = TsDataCache(data_path, sdt='20100101', edt=oneEndDate, refresh=False)
@@ -97,7 +102,7 @@ if __name__ == '__main__':
             for bar in bar30:
                 bg.update(bar)
             trader = CzscAdvancedTrader(bg, trader_strategy_backtest)
-            trader.open_in_browser()
+            # trader.open_in_browser()
             print(trader.s['dt'])
             kCount = trader.s['日线_倒0笔_长度']
             zhongshugongzhenSignal = trader.s['日线_30分钟_中枢共振']
@@ -108,9 +113,32 @@ if __name__ == '__main__':
                     # print(trader.s['dt'])
                     print("3根K线_中枢共振看多")
                     dingmessage(oneStock+"_"+str(trader.s['dt'])+"_"+"3根K线_中枢共振看多")
+                    # oneEndDate是第二天的日期，比如出现了看多在5号，oneEndDate是6号
+                    buyPointsDt.append(trade_dates[trade_dates.index(oneEndDate) - 1])
+                    break
             elif kCountFour in kCount:
                 if zhongshugongzhenkanduo in zhongshugongzhenSignal:
                     # print(trader.s['dt'])
                     print("4根K线_中枢共振看多")
 
-
+        print("所有开多日期是: " + str(buyPointsDt))
+        for oneDay in buyPointsDt:
+            # 前后看100天
+            probar = dataCache.pro_bar(ts_code=oneStock, start_date=trade_dates[trade_dates.index(oneDay) - 100],
+                                              end_date=trade_dates[trade_dates.index(oneDay) + 100], raw_bar=False)
+            currentDay = probar[probar["trade_date"] == oneDay]
+            nextDay = probar[probar["trade_date"] == trade_dates[trade_dates.index(oneDay) + 1]]
+            preclose = nextDay["pre_close"].iloc[0]
+            open = nextDay["open"].iloc[0]
+            # 计算第二天是高开还是低开
+            if open >= preclose:
+                gaokaiNextDay += 1
+            else:
+                dikaiNextDay += 1
+            # 计算在出信号后第二天开盘价买入，持有一天后的开盘价收益(%)
+            hold1Day = n1b = currentDay["n1b"].iloc[0] / 100
+            # 计算在出信号后第二天开盘价买入，5天后的开盘价收益(%)
+            hold5Day = currentDay["n5b"].iloc[0] / 100
+            # 计算在出信号后第二天开盘价买入，21天后的开盘价收益(%)
+            hold21Day = currentDay["n21b"].iloc[0] / 100
+            print("")
