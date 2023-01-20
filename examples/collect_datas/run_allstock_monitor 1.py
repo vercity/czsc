@@ -26,6 +26,7 @@ from czsc.traders import CzscAdvancedTrader
 from czsc.traders import create_advanced_trader
 from czsc.strategies import trader_strategy_custom
 import dill
+from multiprocessing import Process
 
 # =======================================================================================================
 # 基础参数配置
@@ -189,6 +190,13 @@ def updateKline(trader: CzscAdvancedTrader):
         for row in data:
             trader.update(row)
 
-if __name__ == '__main__':
-    monitor(allcodes[0:1000], True)
 
+if __name__ == '__main__':
+    process = [Process(target=monitor, args=(allcodes[0:1000], True,)),
+               Process(target=monitor, args=(allcodes[1000:2000], True,)),
+               Process(target=monitor, args=(allcodes[2000:3000], True,)),
+               Process(target=monitor, args=(allcodes[3000:4000], True,)),
+               Process(target=monitor, args=(allcodes[4000:], True,)), ]
+    [p.start() for p in process]
+    [p.join() for p in process]
+    # monitor(allcodes[0:1000], True)

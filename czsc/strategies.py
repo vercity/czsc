@@ -181,11 +181,11 @@ def trader_strategy_custom(symbol):
             s.update(cxt_sub_b3_V221212(cat, "日线", "30分钟"))
             s.update(cxt_zhong_shu_gong_zhen_V221221(cat, "日线", "30分钟"))
 
-            for di in range(1, 8):
-                s.update(get_s_three_bi(cat.kas[oneFreq], di))
+            # for di in range(1, 8):
+            #     s.update(get_s_three_bi(cat.kas[oneFreq], di))
 
-            for di in range(1, 8):
-                s.update(get_s_base_xt(cat.kas[oneFreq], di))
+            # for di in range(1, 8):
+            #     s.update(get_s_base_xt(cat.kas[oneFreq], di))
 
             for di in range(1, 8):
                 s.update(get_s_like_bs(cat.kas[oneFreq], di))
