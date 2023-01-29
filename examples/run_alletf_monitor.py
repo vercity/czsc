@@ -242,12 +242,16 @@ events_monitor = [
     #     Factor(name="周线_潜在三买", signals_all=[Signal("周线_倒0笔_潜在三买_构成中枢_近3K在中枢上沿附近_近7K突破中枢GG_0")]),
     # ]),
 
-    Event(name="三买回踩", operate=Operate.LO, factors=[
-        Factor(name="日线_30分钟_三买回踩", signals_all=[Signal("日线_30分钟_三买回踩10_确认_任意_任意_0")]),
-    ]),
+    # Event(name="三买回踩", operate=Operate.LO, factors=[
+    #     Factor(name="日线_60分钟_三买回踩", signals_all=[Signal("日线_60分钟_三买回踩10_确认_任意_任意_0")]),
+    # ]),
+    #
+    # Event(name="中枢共振", operate=Operate.LO, factors=[
+    #     Factor(name="日线_60分钟_中枢共振", signals_all=[Signal("日线_60分钟_中枢共振_看多_任意_任意_0")]),
+    # ]),
 
-    Event(name="中枢共振", operate=Operate.LO, factors=[
-        Factor(name="日线_30分钟_中枢共振", signals_all=[Signal("日线_30分钟_中枢共振_看多_任意_任意_0")]),
+    Event(name="三买回踩&共振", operate=Operate.LO, factors=[
+        Factor(name="日线_三买回踩&共振", signals_all=[Signal("日线_60分钟_三买回踩10_确认_任意_任意_0"), Signal("日线_60分钟_中枢共振_看多_任意_任意_0")]),
     ]),
 ]
 

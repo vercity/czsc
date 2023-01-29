@@ -522,12 +522,16 @@ events_monitor = [
         Factor(name="60分钟_底分型强势", signals_all=[Signal("60分钟_倒1K_三K形态_底分型_强势_任意_0")]),
     ]),
 
-    Event(name="三买回踩", operate=Operate.LO, factors=[
-        Factor(name="日线_30分钟_三买回踩", signals_all=[Signal("日线_30分钟_三买回踩10_确认_任意_任意_0")]),
-    ]),
+    # Event(name="三买回踩", operate=Operate.LO, factors=[
+    #     Factor(name="日线_60分钟_三买回踩", signals_all=[Signal("日线_60分钟_三买回踩10_确认_任意_任意_0")]),
+    # ]),
+    #
+    # Event(name="中枢共振", operate=Operate.LO, factors=[
+    #     Factor(name="日线_60分钟_中枢共振", signals_all=[Signal("日线_60分钟_中枢共振_看多_任意_任意_0")]),
+    # ]),
 
-    Event(name="中枢共振", operate=Operate.LO, factors=[
-        Factor(name="日线_30分钟_中枢共振", signals_all=[Signal("日线_30分钟_中枢共振_看多_任意_任意_0")]),
+    Event(name="三买回踩&共振", operate=Operate.LO, factors=[
+        Factor(name="日线_三买回踩&共振", signals_all=[Signal("日线_60分钟_三买回踩10_确认_任意_任意_0"), Signal("日线_60分钟_中枢共振_看多_任意_任意_0")]),
     ]),
 
     # # 开多

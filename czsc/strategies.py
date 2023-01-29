@@ -178,8 +178,8 @@ def trader_strategy_custom(symbol):
             s.update(get_s_single_k(cat.kas[oneFreq], 1))
             # 表里关系
             # s.update(get_s_bi_status(cat.kas[oneFreq]))
-            s.update(cxt_sub_b3_V221212(cat, "日线", "30分钟"))
-            s.update(cxt_zhong_shu_gong_zhen_V221221(cat, "日线", "30分钟"))
+            s.update(cxt_sub_b3_V221212(cat, "日线", "60分钟"))
+            s.update(cxt_zhong_shu_gong_zhen_V221221(cat, "日线", "60分钟"))
 
             # for di in range(1, 8):
             #     s.update(get_s_three_bi(cat.kas[oneFreq], di))
