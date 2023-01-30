@@ -14,7 +14,7 @@ import pandas as pd
 from czsc.data.ts_cache import TsDataCache
 from czsc import CZSC, Freq
 from czsc.utils import BarGenerator
-from czsc.strategies import trader_strategy_backtest2
+from czsc.strategies import trader_strategy_backtest3
 from czsc.traders.base import CzscSignals, CzscAdvancedTrader
 from czsc.objects import Signal, Factor, Event, Operate
 from czsc.data.ts import get_kline, freq_cn_map, dt_fmt, date_fmt, get_all_stocks
@@ -91,7 +91,7 @@ def dingmessage(dingMessage):
     # print(info.text)
 
 fromDate = 20200101
-strategyName = "三买回踩10，中枢共振，day-60min" + str(fromDate)
+strategyName = "三买回踩0，中枢共振，day-60min" + str(fromDate)
 strategyFolderPath = os.path.join(data_path, strategyName)
 if not os.path.exists(strategyFolderPath):
     os.mkdir(strategyFolderPath)
@@ -136,12 +136,12 @@ def backtest(stocks):
                 bg = BarGenerator(base_freq='30分钟', freqs=['60分钟', '日线'], max_count=10000)
                 for bar in barMin:
                     bg.update(bar)
-                trader = CzscAdvancedTrader(bg, trader_strategy_backtest2)
+                trader = CzscAdvancedTrader(bg, trader_strategy_backtest3)
                 # trader.open_in_browser()
                 print(trader.s['dt'])
                 kCount = trader.s['日线_倒0笔_长度']
                 zhongshugongzhenSignal = trader.s['日线_60分钟_中枢共振']
-                sanmaihuicaiSignal = trader.s['日线_60分钟_三买回踩10']
+                sanmaihuicaiSignal = trader.s['日线_60分钟_三买回踩0']
                 if kCountThree in kCount:
                     # print("3根K线")
                     # print(sanmaihuicaiSignal)
