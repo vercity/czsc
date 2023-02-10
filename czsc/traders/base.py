@@ -92,11 +92,10 @@ class CzscSignals:
         else:
             return tab
 
-    def open_in_browser(self, width="1400px", height="580px"):
+    def open_in_browser(self, filePath = os.path.join(home_path, "temp_czsc_advanced_trader.html"), width="1400px", height="580px"):
         """直接在浏览器中打开分析结果"""
-        file_html = os.path.join(home_path, "temp_czsc_advanced_trader.html")
-        self.take_snapshot(file_html, width, height)
-        webbrowser.open(file_html)
+        self.take_snapshot(filePath, width, height)
+        webbrowser.open(filePath)
 
     def update_signals(self, bar: RawBar):
         """输入基础周期已完成K线，更新信号，更新仓位"""

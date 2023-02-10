@@ -67,6 +67,7 @@ def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
     :param di: CZSC 对象
     :return: 信号字典
     """
+
     def __check_first_buy(bis: List[BI]):
         """检查 bis 是否是一买的结束
 
@@ -299,6 +300,54 @@ def cxt_sub_b3_V221212(cat: CzscAdvancedTrader, freq='60分钟', sub_freq='15分
     return s
 
 
+def cxt_vg_customgongzhen(cat: CzscAdvancedTrader, freq='60分钟', sub_freq='15分钟', th=10, last3Count=30, last6Count=50) -> OrderedDict:
+    # 默认最后3笔的长度是40天
+    k1, k2, k3 = f"{freq}_{sub_freq}_vg三买回踩{th}".split('_')
+
+    c: CZSC = cat.kas[freq]
+    sub_c: CZSC = cat.kas[sub_freq]
+
+    v1 = "其他"
+    # 最后一笔方向向上
+    if len(c.bi_list) > 7 and (c.bi_list[-1].direction == Direction.Up):
+        continueJudgeSub = False
+        # 倒4至倒2形成中枢
+        last_bi = c.bi_list[-1]
+        zs = ZS(symbol=cat.symbol, bis=c.bi_list[-4:-1])
+        # 最后一笔超过中枢最低点50不考虑
+        if (last_bi.high - zs.dd)/zs.dd < 0.5:
+            # 保证这个震荡长度够长
+            if sum([x.length for x in c.bi_list[-4:-1]]) > last3Count \
+                    or sum([x.length for x in c.bi_list[-7:-1]]) > last6Count:
+                # 最后一根K线大于前n笔最高点
+                if c.bars_raw[-1].close > max([x.high for x in c.bi_list[-7:-1]]):
+                    # 中枢最高点是倒2到倒7的最高点，保证前面没有抛压
+                    if zs.gg == max([x.high for x in c.bi_list[-7:-1]]) \
+                            and (max([x.high for x in c.bi_list[-7:-1]]) - min([x.high for x in c.bi_list[-7:-1]])) / min([x.high for x in c.bi_list[-7:-1]]) < 0.3:
+                        continueJudgeSub = True
+
+        if continueJudgeSub:
+            last_sub_bi = sub_c.bi_list[-1]
+            if last_sub_bi.direction == Direction.Down and last_sub_bi.high > zs.gg \
+                    and last_sub_bi.low > zs.zg - (th / 100) * (zs.zg - zs.zd):
+                v1 = "确认"
+
+            # elif len(c.bi_list) > 13 and len(sub_c.bi_list) > 7:
+            #     min7 = min([x.low for x in c.bi_list[-7:]])
+            #     # 中枢成立，且中枢最低点不是最后7笔的最低点，且最后7笔最低点同时也是最后13笔最低点（保证低点起来第一个中枢）
+            #     if zs.zd < zs.zg and zs.dd > min7 == min([x.low for x in c.bi_list[-13:]]):
+            #         last_sub_bi = sub_c.bi_list[-1]
+            #
+            #         if last_sub_bi.direction == Direction.Down and last_sub_bi.high > zs.gg \
+            #                 and last_sub_bi.low > zs.zg - (th / 100) * (zs.zg - zs.zd):
+            #             v1 = "确认"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
 def cxt_zhong_shu_gong_zhen_V221221(cat: CzscAdvancedTrader, freq1='日线', freq2='60分钟') -> OrderedDict:
     """大小级别中枢共振，类二买共振；贡献者：琅盎
 
@@ -349,4 +398,42 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscAdvancedTrader, freq1='日线', fre
     s[signal.key] = signal.value
     return s
 
+def cxt_vg_threeBuy(cat: CzscAdvancedTrader, freq='日线', sub_freq='30分钟', th=38.2) -> OrderedDict:
+    # 默认最后3笔的长度是40天
+    k1, k2, k3 = f"{freq}_{sub_freq}_vg三买".split('_')
+    # Signal('日线_30分钟_vg三买_确认_38.2_10_0')
+    # 确认_{回调幅度相对于倒数第二笔}_{最后一笔天数}_震荡天数_倒数第二笔上攻涨幅
+    c: CZSC = cat.kas[freq]
+    sub_c: CZSC = cat.kas[sub_freq]
 
+    v1 = "其他"
+    v2 = "0"
+    v3 = "0"
+    score = 0
+    # 最后一笔方向向下
+    if len(c.bi_list) > 7 and (c.bi_list[-1].direction == Direction.Down):
+        continueJudgeSub = False
+        # 倒5至倒3形成中枢
+        last_bi = c.bi_list[-1]
+        zs = ZS(symbol=cat.symbol, bis=c.bi_list[-5:-2])
+        #倒数第一笔最低比中枢最高点高
+        biCount = sum([x.length for x in c.bi_list[-5:-2]])
+        if last_bi.low > zs.gg:
+            # 从倒数第六根开始往前推震荡区间，假设往前推笔，最高点不高于倒1的最低，最低点低于zs的10%，就算震荡
+            for i in range(5, c.bi_list.__len__())[::-1]:
+                thisB = c.bi_list[i]
+                if thisB.high >= last_bi.low:
+                    break
+                if thisB.low < zs.dd*0.9:
+                    break
+                #加上这一笔的长度
+                biCount = biCount + thisB.length
+            v1 = "确认"
+            v2 = str((c.bi_list[-2].high - last_bi.low) / (c.bi_list[-2].high - c.bi_list[-2].low))
+            v3 = str(last_bi.length) + "_" + str(biCount)
+            score = (c.bi_list[-2].high - c.bi_list[-2].low)/ c.bi_list[-2].low
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3, score=score)
+    s[signal.key] = signal.value
+    return s

@@ -18,12 +18,16 @@ from czsc.strategies import trader_strategy_backtest3
 from czsc.traders.base import CzscSignals, CzscAdvancedTrader
 from czsc.objects import Signal, Factor, Event, Operate
 from czsc.data.ts import get_kline, freq_cn_map, dt_fmt, date_fmt, get_all_stocks
-import requests
+from czsc.utils.dingding import dingmessage
 import json
 import hashlib
 from czsc.utils.io import read_pkl, save_pkl
 from multiprocessing import Process
 import numpy as np
+from collections import OrderedDict
+from czsc.signals.bxt import get_s_like_bs, get_s_d0_bi
+from czsc.signals.ta import get_s_single_k
+from czsc.signals.cxt import cxt_vg_threeBuy
 
 pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_rows', 10000)
@@ -40,20 +44,10 @@ allStocks = get_all_stocks()
 stockDf = pd.DataFrame(allStocks, columns=['ts_code', 'name'])
 allStockCodes = stockDf['ts_code'].values.tolist()
 
-events_monitor = [
-    Event(name="三买回踩", operate=Operate.LO, factors=[
-        Factor(name="日线_30分钟_三买回踩", signals_all=[Signal("日线_30分钟_三买回踩10_确认_任意_任意_0")]),
-    ]),
-
-    Event(name="中枢共振", operate=Operate.LO, factors=[
-        Factor(name="日线_30分钟_中枢共振", signals_all=[Signal("日线_30分钟_中枢共振_看多_任意_任意_0")]),
-    ]),
-]
 
 kCountThree = '3根K线'
 kCountFour = '4根K线'
-zhongshugongzhenkanduo = "看多"
-sanmaihuicaiqueren = "确认"
+sanmaiqueren = "确认"
 
 gaokaiNextDay = 0
 dikaiNextDay = 0
@@ -62,41 +56,50 @@ n3bResult = []
 n5bResult = []
 n21bResult = []
 
-def dingmessage(dingMessage):
-    return
-    # 请求的URL，WebHook地址
-    webhook = "https://oapi.dingtalk.com/robot/send?access_token=48c7a649e0f1b4be1e699461a93e6392010074b07f48c60c058927b8f406423a"
-    # 构建请求头部
-    header = {
-        "Content-Type": "application/json",
-        "Charset": "UTF-8"
-    }
-    # 构建请求数据
-    tex = "【backtest】: {}".format(dingMessage)
-    # print(tex)
-    message = {
-        "msgtype": "text",
-        "text": {
-            "content": tex
-        },
-        # "at": {
-        #     "isAtAll": True
-        # }
-    }
-    # 对请求的数据进行json封装
-    message_json = json.dumps(message)
-    # 发送请求
-    info = requests.post(url=webhook, data=message_json, headers=header)
-    # 打印返回的结果
-    # print(info.text)
-
 fromDate = 20200101
-strategyName = "vg三买回踩，中枢共振，day-60min" + str(fromDate)
+strategyName = "vg三买，day-60min" + str(fromDate)
 strategyFolderPath = os.path.join(data_path, strategyName)
 if not os.path.exists(strategyFolderPath):
     os.mkdir(strategyFolderPath)
 
-isBackTestResult = False
+def trader_strategy_backtestThis(symbol):
+    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+
+        if cat.s:
+            dictMerge = cat.s.copy()
+        else:
+            dictMerge = OrderedDict()
+
+        for oneFreq in cat.kas.keys():
+            s = OrderedDict({"symbol": cat.kas[oneFreq].symbol, "dt": cat.kas[oneFreq].bars_raw[-1].dt,
+                             "close": cat.kas[oneFreq].bars_raw[-1].close})
+            if oneFreq == '日线':
+                s.update(cxt_vg_threeBuy(cat, "日线", "60分钟"))
+                s.update(get_s_d0_bi(cat.kas[oneFreq]))
+                s.update(get_s_single_k(cat.kas[oneFreq], 1))
+
+            dictMerge.update(s)
+
+        return dictMerge
+
+    tactic = {
+        "base_freq": '30分钟',
+        "freqs": ['30分钟', '60分钟', '日线'],
+        "get_signals": get_signals,
+        "signals_n": 0,
+
+        "long_pos": None,
+        "long_events": None,
+
+        # 空头策略不进行定义，也就是不做空头交易
+        "short_pos": None,
+        "short_events": None,
+    }
+
+    return tactic
+
+
+isBackTestResult = True
 # ssss = np.load(os.path.join(strategyFolderPath, "btStock") + '.npy', allow_pickle=True).item()
 btStock = {}
 
@@ -131,10 +134,7 @@ def backtest(stocks):
         if oneStock.endswith('BJ'):
             continue
 
-        resultDataFrame = pd.DataFrame(columns=["日期", "标的", "3K形态", "倒1K状态"])
-        # oneStock = '300791.SZ'
-        # oneStock = '002541.SZ'
-        # oneStock = '000002.SZ'
+        resultDataFrame = pd.DataFrame(columns=["日期", "标的", "3K形态", "倒1K状态", "回调幅度", "最后一笔天数", "震荡时间", "上攻涨幅"])
         print(oneStock)
 
         stockPath = os.path.join(strategyFolderPath, oneStock) + '.pkl'
@@ -161,24 +161,22 @@ def backtest(stocks):
                 bg = BarGenerator(base_freq='30分钟', freqs=['60分钟', '日线'], max_count=10000)
                 for bar in barMin:
                     bg.update(bar)
-                trader = CzscAdvancedTrader(bg, trader_strategy_backtest3)
-                # trader.open_in_browser()
+                trader = CzscAdvancedTrader(bg, trader_strategy_backtestThis)
                 print(trader.s['dt'])
                 kCount = trader.s['日线_倒0笔_长度']
                 # zhongshugongzhenSignal = trader.s['日线_60分钟_中枢共振']
-                sanmaihuicaiSignal = trader.s['日线_60分钟_vg三买回踩0']
+                sanmaihuicaiSignal = trader.s['日线_60分钟_vg三买']
                 if kCountThree in kCount:
-                    if sanmaihuicaiqueren in sanmaihuicaiSignal:
-                        print(oneStock)
-                        print(kCountThree + "_中枢共振看多 & 三买回踩确认")
-
+                    if sanmaiqueren in sanmaihuicaiSignal:
+                        detailSignal = sanmaihuicaiSignal.split("_")
+                        print(kCountThree + "三买确认")
                         otherSignals = calculateOtherSignals(trader)
                         otherSignals["日期"] = trade_dates[trade_dates.index(oneEndDate) - 1]
                         otherSignals["倒1K状态"] = trader.s["日线_倒1K_状态"].split("_")[0]
-                        trader.open_in_browser(filePath=os.path.join(strategyFolderPath, oneStock + "_" + oneEndDate) + '.html')
+                        trader.open_in_browser(filePath=os.path.join(strategyFolderPath, oneStock + "_" + trade_dates[trade_dates.index(oneEndDate) - 1]) + '.html')
 
                         resultDataFrame = resultDataFrame.append(
-                            {"日期": otherSignals["日期"], "标的": oneStock, "3K形态":otherSignals["3K形态"], "倒1K状态":otherSignals["倒1K状态"]}, ignore_index=True)
+                            {"日期": otherSignals["日期"], "标的": oneStock, "3K形态":otherSignals["3K形态"], "倒1K状态":otherSignals["倒1K状态"], "回调幅度":float(detailSignal[1]), "最后一笔天数":float(detailSignal[2]), "震荡时间":int(detailSignal[3]), "上攻涨幅":float(detailSignal[4])}, ignore_index=True)
                         # dingmessage(oneStock + "_" + str(trader.s['dt']) + "_" + "3根K线_中枢共振看多")
                         # oneEndDate是第二天的日期，比如出现了看多在5号，oneEndDate是6号
                         print(resultDataFrame)
@@ -190,8 +188,11 @@ def backtest(stocks):
         # print("所有开多日期是: " + str(buyPointsDt))
         if isBackTestResult:
             # 筛选
-            # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['3K形态'] == '顶分型强势')]
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '上涨']
+            # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['3K形态'] == '底分型强势')]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '下跌']
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.382]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
             kaicangPrice = 0
             for oneDay in resultDataFrame['日期'].values.tolist():
                 if oneDay in btStock.keys():

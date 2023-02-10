@@ -498,13 +498,13 @@ events_monitor = [
     #     Factor(name="60分钟_底分型停顿", signals_all=[Signal("60分钟_倒1K_四K形态_底分型_强势停顿_任意_0")], signals_any=[Signal("60分钟_倒0笔_长度_2根K线_任意_任意_0"), Signal("60分钟_倒0笔_长度_1根K线_任意_任意_0"), Signal("60分钟_倒0笔_长度_4根K线_任意_任意_0"), Signal("60分钟_倒0笔_长度_3根K线_任意_任意_0")]),
     # ]),
 
-    Event(name="底分型停顿", operate=Operate.LO, factors=[
-        Factor(name="日线_底分型停顿", signals_all=[Signal("日线_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-        Factor(name="30分钟_底分型停顿", signals_all=[Signal("30分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-        Factor(name="15分钟_底分型停顿", signals_all=[Signal("15分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-        Factor(name="5分钟_底分型停顿", signals_all=[Signal("5分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-        Factor(name="60分钟_底分型停顿", signals_all=[Signal("60分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-    ]),
+    # Event(name="底分型停顿", operate=Operate.LO, factors=[
+    #     Factor(name="日线_底分型停顿", signals_all=[Signal("日线_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+    #     Factor(name="30分钟_底分型停顿", signals_all=[Signal("30分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+    #     Factor(name="15分钟_底分型停顿", signals_all=[Signal("15分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+    #     Factor(name="5分钟_底分型停顿", signals_all=[Signal("5分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+    #     Factor(name="60分钟_底分型停顿", signals_all=[Signal("60分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
+    # ]),
 
     # Event(name="底分型强势", operate=Operate.LO, factors=[
     #     Factor(name="日线_底分型强势", signals_all=[Signal("日线_倒1K_三K形态_底分型_强势_任意_0")], signals_any=[Signal("日线_倒0笔_长度_2根K线_任意_任意_0"), Signal("日线_倒0笔_长度_1根K线_任意_任意_0"), Signal("日线_倒0笔_长度_4根K线_任意_任意_0"), Signal("日线_倒0笔_长度_3根K线_任意_任意_0")]),
@@ -514,13 +514,13 @@ events_monitor = [
     #     Factor(name="60分钟_底分型强势", signals_all=[Signal("60分钟_倒1K_三K形态_底分型_强势_任意_0")], signals_any=[Signal("60分钟_倒0笔_长度_2根K线_任意_任意_0"), Signal("60分钟_倒0笔_长度_1根K线_任意_任意_0"), Signal("60分钟_倒0笔_长度_4根K线_任意_任意_0"), Signal("60分钟_倒0笔_长度_3根K线_任意_任意_0")]),
     # ]),
 
-    Event(name="底分型强势", operate=Operate.LO, factors=[
-        Factor(name="日线_底分型强势", signals_all=[Signal("日线_倒1K_三K形态_底分型_强势_任意_0")],),
-        Factor(name="30分钟_底分型强势", signals_all=[Signal("30分钟_倒1K_三K形态_底分型_强势_任意_0")]),
-        Factor(name="15分钟_底分型强势", signals_all=[Signal("15分钟_倒1K_三K形态_底分型_强势_任意_0")]),
-        Factor(name="5分钟_底分型强势", signals_all=[Signal("5分钟_倒1K_三K形态_底分型_强势_任意_0")]),
-        Factor(name="60分钟_底分型强势", signals_all=[Signal("60分钟_倒1K_三K形态_底分型_强势_任意_0")]),
-    ]),
+    # Event(name="底分型强势", operate=Operate.LO, factors=[
+    #     Factor(name="日线_底分型强势", signals_all=[Signal("日线_倒1K_三K形态_底分型_强势_任意_0")],),
+    #     Factor(name="30分钟_底分型强势", signals_all=[Signal("30分钟_倒1K_三K形态_底分型_强势_任意_0")]),
+    #     Factor(name="15分钟_底分型强势", signals_all=[Signal("15分钟_倒1K_三K形态_底分型_强势_任意_0")]),
+    #     Factor(name="5分钟_底分型强势", signals_all=[Signal("5分钟_倒1K_三K形态_底分型_强势_任意_0")]),
+    #     Factor(name="60分钟_底分型强势", signals_all=[Signal("60分钟_倒1K_三K形态_底分型_强势_任意_0")]),
+    # ]),
 
     # Event(name="三买回踩", operate=Operate.LO, factors=[
     #     Factor(name="日线_60分钟_三买回踩", signals_all=[Signal("日线_60分钟_三买回踩10_确认_任意_任意_0")]),
@@ -530,8 +530,8 @@ events_monitor = [
     #     Factor(name="日线_60分钟_中枢共振", signals_all=[Signal("日线_60分钟_中枢共振_看多_任意_任意_0")]),
     # ]),
 
-    Event(name="三买回踩&共振", operate=Operate.LO, factors=[
-        Factor(name="日线_三买回踩&共振", signals_all=[Signal("日线_60分钟_三买回踩10_确认_任意_任意_0"), Signal("日线_60分钟_中枢共振_看多_任意_任意_0")]),
+    Event(name="三买回踩", operate=Operate.LO, factors=[
+        Factor(name="日线_三买回踩", signals_all=[Signal("日线_60分钟_vg三买回踩0_确认_任意_任意_0")]),
     ]),
 
     # # 开多
