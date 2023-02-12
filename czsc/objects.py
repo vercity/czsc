@@ -419,12 +419,21 @@ class Signal:
         if not v:
             raise ValueError(f"{key} 不在信号列表中")
 
-        v1, v2, v3, score = v.split("_")
-        if int(score) >= self.score:
-            if v1 == self.v1 or self.v1 == '任意':
-                if v2 == self.v2 or self.v2 == '任意':
-                    if v3 == self.v3 or self.v3 == '任意':
-                        return True
+        subMatch = v.split("_")
+        if len(subMatch) == 5:
+            v1, v2, v3, v4, score = v.split("_")
+            if float(score) >= self.score:
+                if v1 == self.v1 or self.v1 == '任意':
+                    if v2 == self.v2 or self.v2 == '任意':
+                        if v3 == self.v3 or self.v3 == '任意':
+                            return True
+        else:
+            v1, v2, v3, score = v.split("_")
+            if int(score) >= self.score:
+                if v1 == self.v1 or self.v1 == '任意':
+                    if v2 == self.v2 or self.v2 == '任意':
+                        if v3 == self.v3 or self.v3 == '任意':
+                            return True
         return False
 
 

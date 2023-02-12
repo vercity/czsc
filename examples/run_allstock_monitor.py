@@ -530,8 +530,8 @@ events_monitor = [
     #     Factor(name="日线_60分钟_中枢共振", signals_all=[Signal("日线_60分钟_中枢共振_看多_任意_任意_0")]),
     # ]),
 
-    Event(name="三买回踩", operate=Operate.LO, factors=[
-        Factor(name="日线_三买回踩", signals_all=[Signal("日线_60分钟_vg三买回踩0_确认_任意_任意_0")]),
+    Event(name="vg三买", operate=Operate.LO, factors=[
+        Factor(name="日线_60分钟_vg三买", signals_all=[Signal("日线_60分钟_vg三买_确认_任意_任意_0")]),
     ]),
 
     # # 开多
@@ -668,7 +668,10 @@ def monitor(use_cache=True):
                 m, f = event.is_match(ct.s)
                 if m:
                     daoZeroKey = "{}_倒0笔_长度".format(f.split("_")[0])
-                    msg += "监控提醒：{}@{} [{}]\n".format(event.name, f, ct.s[daoZeroKey])
+                    if f in ct.s.keys():
+                        msg += "监控提醒：{}@{} [{}], {}\n".format(event.name, f, ct.s[daoZeroKey], ct.s[f])
+                    else:
+                        msg += "监控提醒：{}@{} [{}]\n".format(event.name, f, ct.s[daoZeroKey])
             print(msg)
             # if "监控提醒" in msg:
             #     dingmessage(msg.strip("\n"))

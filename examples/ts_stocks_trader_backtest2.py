@@ -189,10 +189,10 @@ def backtest(stocks):
         if isBackTestResult:
             # 筛选
             # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['3K形态'] == '底分型强势')]
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '下跌']
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.382]
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '下跌']
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.382]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
             kaicangPrice = 0
             for oneDay in resultDataFrame['日期'].values.tolist():
                 if oneDay in btStock.keys():
@@ -248,10 +248,10 @@ def backtest(stocks):
         # 统计汇总
         print("总共交易 {} 次".format(gaokaiNextDay + dikaiNextDay))
         print("高开占比 {}".format(gaokaiNextDay / (gaokaiNextDay + dikaiNextDay)))
-        print("1天就卖，平均赚 {}".format(str(np.nanmean(n1bResult))))
-        print("3天就卖，平均赚 {}".format(str(np.nanmean(n3bResult))))
-        print("5天就卖，平均赚 {}".format(str(np.nanmean(n5bResult))))
-        print("21天就卖，平均赚 {}".format(str(np.nanmean(n21bResult))))
+        print("1天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n1bResult)), str(np.median(n1bResult))))
+        print("3天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n3bResult)), str(np.median(n3bResult))))
+        print("5天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n5bResult)), str(np.median(n5bResult))))
+        print("21天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n21bResult)), str(np.median(n21bResult))))
 
         tf = open(os.path.join(strategyFolderPath, "btStock") + '.json', "w")
         json.dump(btStock, tf)
