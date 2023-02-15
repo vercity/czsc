@@ -85,6 +85,9 @@ def monitor(needCacheStocks, use_cache=True):
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct) and use_cache:
                 ct: CzscAdvancedTrader = dill.load(open(file_ct, 'rb'))
+                ct.strategy = trader_strategy_custom
+                tactic = ct.strategy("") if trader_strategy_custom else {}
+                ct.get_signals: Callable = tactic.get('get_signals')
                 updateKline(ct)
             else:
                 kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
