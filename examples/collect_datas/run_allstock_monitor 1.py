@@ -30,7 +30,8 @@ from multiprocessing import Process
 
 # =======================================================================================================
 # 基础参数配置
-ct_path = "/Volumes/OuGuMore/Stock/data"
+# ct_path = "/Volumes/OuGuMore/Stock/data"
+ct_path = "/Users/guyeqi/Documents/Python/data/realtime/data"
 os.makedirs(ct_path, exist_ok=True)
 # allName = os.listdir("/Volumes/OuGuMore/Stock/data/")
 # for oneName in allName:
@@ -91,7 +92,7 @@ def monitor(needCacheStocks, use_cache=True):
                 updateKline(ct)
             else:
                 kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
-                                 freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'])
+                                 freqs=['30分钟', '60分钟', '日线', '周线'])
                 ct = create_advanced_trader(bg=kg, raw_bars=[], strategy=trader_strategy_custom)
             dill.dump(ct, open(file_ct, 'wb'))
             # continue
@@ -139,7 +140,7 @@ def get_init_bg(symbol: str,
     if "周线" in freqs or "月线" in freqs:
         d_bars = get_kline(ts_code=symbol, start_date=last_day - timedelta(days=2500), end_date=last_day,
                            freq=freq_cn_map["日线"])
-        bgd = BarGenerator("日线", ['周线', '月线'])
+        bgd = BarGenerator("日线", ['周线'])
         for b in d_bars:
             bgd.update(b)
     else:

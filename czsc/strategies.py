@@ -14,7 +14,7 @@ from czsc.traders import CzscAdvancedTrader
 from czsc.objects import PositionLong, PositionShort, RawBar
 from czsc.signals.bxt import get_s_like_bs, get_s_d0_bi, get_s_bi_status, get_s_di_bi, get_s_base_xt, get_s_three_bi
 from czsc.signals.ta import get_s_single_k, get_s_three_k, get_s_sma, get_s_macd, get_s_tingdun_k
-from czsc.signals.cxt import cxt_sub_b3_V221212, cxt_zhong_shu_gong_zhen_V221221, cxt_vg_customgongzhen, cxt_vg_threeBuy
+from czsc.signals.cxt import cxt_sub_b3_V221212, cxt_zhong_shu_gong_zhen_V221221, cxt_vg_customgongzhen, cxt_vg_threeBuy, cxt_vg_threeBuyConfirm, cxt_vg_oneBuy, cxt_vg_fakeOneBuy
 
 
 def trader_standard(symbol, T0=False, min_interval=3600 * 4):
@@ -182,6 +182,9 @@ def trader_strategy_custom(symbol):
             # s.update(cxt_zhong_shu_gong_zhen_V221221(cat, "日线", "60分钟"))
             if oneFreq == '日线':
                 s.update(cxt_vg_threeBuy(cat, "日线", "60分钟"))
+                s.update(cxt_vg_threeBuyConfirm(cat, "日线", "60分钟"))
+            s.update(cxt_vg_oneBuy(cat, oneFreq))
+            s.update(cxt_vg_fakeOneBuy(cat, oneFreq))
             # for di in range(1, 8):
             #     s.update(get_s_three_bi(cat.kas[oneFreq], di))
 

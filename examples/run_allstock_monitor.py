@@ -29,7 +29,8 @@ import dill
 
 # =======================================================================================================
 # 基础参数配置
-ct_path = "/Volumes/OuGuMore/Stock/data"
+# ct_path = "/Volumes/OuGuMore/Stock/data"
+ct_path = "/Users/guyeqi/Documents/Python/data/realtime/data"
 os.makedirs(ct_path, exist_ok=True)
 # allName = os.listdir("/Volumes/OuGuMore/Stock/data/")
 # for oneName in allName:
@@ -249,14 +250,14 @@ events_monitor = [
     Event(name="九笔aAbBc式类一买", operate=Operate.LO, factors=[
         Factor(name="日线_类一买", signals_all=[Signal("日线_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("日线_倒1K_DIF回抽_0轴_任意_任意_0"),
                                            Signal("日线_倒1K_MACD方向_向上_任意_任意_0")]),
-        Factor(name="30分钟_类一买", signals_all=[Signal("30分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("30分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
-                                           Signal("30分钟_倒1K_MACD方向_向上_任意_任意_0")]),
-        Factor(name="15分钟_类一买", signals_all=[Signal("15分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("15分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
-                                           Signal("15分钟_倒1K_MACD方向_向上_任意_任意_0")]),
-        Factor(name="5分钟_类一买", signals_all=[Signal("5分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("5分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
-                                           Signal("5分钟_倒1K_MACD方向_向上_任意_任意_0")]),
-        Factor(name="60分钟_类一买", signals_all=[Signal("60分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("60分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
-                                           Signal("60分钟_倒1K_MACD方向_向上_任意_任意_0")]),
+        # Factor(name="30分钟_类一买", signals_all=[Signal("30分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("30分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
+        #                                    Signal("30分钟_倒1K_MACD方向_向上_任意_任意_0")]),
+        # Factor(name="15分钟_类一买", signals_all=[Signal("15分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("15分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
+        #                                    Signal("15分钟_倒1K_MACD方向_向上_任意_任意_0")]),
+        # Factor(name="5分钟_类一买", signals_all=[Signal("5分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("5分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
+        #                                    Signal("5分钟_倒1K_MACD方向_向上_任意_任意_0")]),
+        # Factor(name="60分钟_类一买", signals_all=[Signal("60分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("60分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
+        #                                    Signal("60分钟_倒1K_MACD方向_向上_任意_任意_0")]),
     ]),
     #
     # Event(name="九笔aAbBc式类一卖", operate=Operate.LO, factors=[
@@ -448,28 +449,28 @@ events_monitor = [
     # ]),
     #
     # # 13笔 ABC式类一卖，A5B5C3
-    Event(name="小三买", operate=Operate.LO, factors=[
-        Factor(name="30分钟_小三买",signals_all=[
-                Signal("30分钟_倒1K_MACD方向_向上_任意_任意_0"),
-            ],
-               signals_any=[Signal("30分钟_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"), Signal("30分钟_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
-                            Signal("30分钟_倒1笔_类买卖点_类三买_13笔GG三买_任意_0")]),
-        Factor(name="15分钟_小三买",signals_all=[
-                Signal("15分钟_倒1K_MACD方向_向上_任意_任意_0"),
-            ],
-               signals_any=[Signal("15分钟_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"), Signal("15分钟_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
-                            Signal("15分钟_倒1笔_类买卖点_类三买_13笔GG三买_任意_0")]),
-        Factor(name="5分钟_小三买",signals_all=[
-                Signal("5分钟_倒1K_MACD方向_向上_任意_任意_0"),
-            ],
-               signals_any=[Signal("5分钟_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"), Signal("5分钟_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
-                            Signal("5分钟_倒1笔_类买卖点_类三买_13笔GG三买_任意_0")]),
-        Factor(name="60分钟_小三买",signals_all=[
-                Signal("60分钟_倒1K_MACD方向_向上_任意_任意_0"),
-            ],
-               signals_any=[Signal("60分钟_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"), Signal("60分钟_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
-                            Signal("60分钟_倒1笔_类买卖点_类三买_13笔GG三买_任意_0")]),
-    ]),
+    # Event(name="小三买", operate=Operate.LO, factors=[
+    #     Factor(name="30分钟_小三买",signals_all=[
+    #             Signal("30分钟_倒1K_MACD方向_向上_任意_任意_0"),
+    #         ],
+    #            signals_any=[Signal("30分钟_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"), Signal("30分钟_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
+    #                         Signal("30分钟_倒1笔_类买卖点_类三买_13笔GG三买_任意_0")]),
+    #     Factor(name="15分钟_小三买",signals_all=[
+    #             Signal("15分钟_倒1K_MACD方向_向上_任意_任意_0"),
+    #         ],
+    #            signals_any=[Signal("15分钟_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"), Signal("15分钟_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
+    #                         Signal("15分钟_倒1笔_类买卖点_类三买_13笔GG三买_任意_0")]),
+    #     Factor(name="5分钟_小三买",signals_all=[
+    #             Signal("5分钟_倒1K_MACD方向_向上_任意_任意_0"),
+    #         ],
+    #            signals_any=[Signal("5分钟_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"), Signal("5分钟_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
+    #                         Signal("5分钟_倒1笔_类买卖点_类三买_13笔GG三买_任意_0")]),
+    #     Factor(name="60分钟_小三买",signals_all=[
+    #             Signal("60分钟_倒1K_MACD方向_向上_任意_任意_0"),
+    #         ],
+    #            signals_any=[Signal("60分钟_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"), Signal("60分钟_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
+    #                         Signal("60分钟_倒1笔_类买卖点_类三买_13笔GG三买_任意_0")]),
+    # ]),
     #
     # # 潜在三买
     # Event(name="潜在三买", operate=Operate.LO, factors=[
@@ -532,6 +533,24 @@ events_monitor = [
 
     Event(name="vg三买", operate=Operate.LO, factors=[
         Factor(name="日线_60分钟_vg三买", signals_all=[Signal("日线_60分钟_vg三买_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="vg三买确认", operate=Operate.LO, factors=[
+        Factor(name="日线_60分钟_vg三买确认", signals_all=[Signal("日线_60分钟_vg三买确认_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="vg一买", operate=Operate.LO, factors=[
+        Factor(name="日线_vg一买", signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="30分钟_vg一买", signals_all=[Signal("30分钟_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="60分钟_vg一买", signals_all=[Signal("60分钟_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="周线_vg一买", signals_all=[Signal("周线_vg一买_任意_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="vg潜在一买", operate=Operate.LO, factors=[
+        Factor(name="日线_vg潜在一买", signals_all=[Signal("日线_vg潜在一买_任意_确认_任意_任意_0")]),
+        Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+        Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+        Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
     ]),
 
     # # 开多
@@ -651,7 +670,7 @@ def monitor(use_cache=True):
                 # hasChange = updateKline(ct)
             else:
                 kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
-                                 freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'])
+                                 freqs=['30分钟', '60分钟', '日线', '周线'])
                 ct = create_advanced_trader(bg=kg, raw_bars=[], strategy=trader_strategy_custom)
                 hasChange = True
             # if hasChange:

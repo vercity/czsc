@@ -28,7 +28,7 @@ import numpy as np
 from collections import OrderedDict
 from czsc.signals.bxt import get_s_like_bs, get_s_d0_bi
 from czsc.signals.ta import get_s_single_k
-from czsc.signals.cxt import cxt_vg_threeBuy
+from czsc.signals.cxt import cxt_vg_threeBuyConfirm
 
 pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_rows', 10000)
@@ -37,8 +37,8 @@ pd.set_option('display.max_columns', 20)
 data_path = "/Volumes/OuGuMore/Stock/backtest/data"
 backup_data_path = "/Users/guyeqi/Documents/Python/data/backtest/data"
 
-fromDate = 20200101
-strategyName = "vg三买，day-60min" + str(fromDate)
+fromDate = 20150101
+strategyName = "vg三买确认，day-60min" + str(fromDate)
 strategyFolderPath = os.path.join(data_path, strategyName)
 strategyFoldeBackrPath = os.path.join(backup_data_path, strategyName)
 if not os.path.exists(strategyFolderPath):
@@ -83,17 +83,18 @@ def trader_strategy_backtestThis(symbol):
             s = OrderedDict({"symbol": cat.kas[oneFreq].symbol, "dt": cat.kas[oneFreq].bars_raw[-1].dt,
                              "close": cat.kas[oneFreq].bars_raw[-1].close})
             if oneFreq == '日线':
-                s.update(cxt_vg_threeBuy(cat, "日线", "60分钟"))
                 s.update(get_s_d0_bi(cat.kas[oneFreq]))
-                s.update(get_s_single_k(cat.kas[oneFreq], 1))
+                if s['日线_倒0笔_长度'].split("_")[0] == '3根K线' and s['日线_倒0笔_方向'].split("_")[0] == '向上':
+                    s.update(cxt_vg_threeBuyConfirm(cat, "日线", "60分钟"))
+                    s.update(get_s_single_k(cat.kas[oneFreq], 1))
 
             dictMerge.update(s)
 
         return dictMerge
 
     tactic = {
-        "base_freq": '30分钟',
-        "freqs": ['30分钟', '60分钟', '日线'],
+        "base_freq": '日线',
+        "freqs": ['日线'],
         "get_signals": get_signals,
         "signals_n": 0,
 
@@ -108,7 +109,7 @@ def trader_strategy_backtestThis(symbol):
     return tactic
 
 
-isBackTestResult = True
+isBackTestResult = False
 # ssss = np.load(os.path.join(strategyFolderPath, "btStock") + '.npy', allow_pickle=True).item()
 btStock = {}
 
@@ -136,14 +137,14 @@ def calculateOtherSignals(c):
 
 def backtest(stocks):
     global dikaiNextDay, gaokaiNextDay
-    global maxZF
-    maxZF = 0
+    global maxZF, maxDF
+    maxZF = maxDF = 0
 
     for oneStock in stocks:
         if oneStock.endswith('BJ'):
             continue
 
-        resultDataFrame = pd.DataFrame(columns=["日期", "标的", "3K形态", "倒1K状态", "回调幅度", "最后一笔天数", "震荡时间", "上攻涨幅"])
+        resultDataFrame = pd.DataFrame(columns=["日期", "标的", "3K形态", "倒1K状态", "回调幅度", "最后三笔天数", "震荡时间", "上攻涨幅"])
         print(oneStock)
 
         stockPath = os.path.join(strategyFolderPath, oneStock) + '.pkl'
@@ -162,30 +163,35 @@ def backtest(stocks):
                 if int(oneEndDate) > 20230110:
                     continue
                 dataCache = TsDataCache(data_path, sdt='20100101', edt=oneEndDate, refresh=False)
-                barMin = dataCache.pro_bar_minutes(ts_code=oneStock, sdt=trade_dates[trade_dates.index(oneEndDate) - 500],
-                                                  edt=oneEndDate, freq='30min')
+                # barMin = dataCache.pro_bar_minutes(ts_code=oneStock, sdt=trade_dates[trade_dates.index(oneEndDate) - 500],
+                #                                   edt=oneEndDate, freq='30min')
+                barMin = dataCache.pro_bar(ts_code=oneStock, start_date=trade_dates[trade_dates.index(oneEndDate) - 500],
+                                                  end_date=oneEndDate)
                 # 没有数据的情况
                 if len(barMin) == 0:
                     continue
-                bg = BarGenerator(base_freq='30分钟', freqs=['60分钟', '日线'], max_count=10000)
-                for bar in barMin:
-                    bg.update(bar)
+                bg = BarGenerator(base_freq='日线', freqs=[ ], max_count=10000)
+                bg.init_freq_bars('日线', barMin)
+                # for bar in barMin:
+                #     bg.update(bar)
                 trader = CzscAdvancedTrader(bg, trader_strategy_backtestThis)
                 print(trader.s['dt'])
                 kCount = trader.s['日线_倒0笔_长度']
                 # zhongshugongzhenSignal = trader.s['日线_60分钟_中枢共振']
-                sanmaihuicaiSignal = trader.s['日线_60分钟_vg三买']
+                if ('日线_60分钟_vg三买确认' in trader.s.keys()) == False:
+                    continue
+                sanmaihuicaiSignal = trader.s['日线_60分钟_vg三买确认']
                 if kCountThree in kCount:
                     if sanmaiqueren in sanmaihuicaiSignal:
                         detailSignal = sanmaihuicaiSignal.split("_")
                         print(kCountThree + "三买确认")
                         otherSignals = calculateOtherSignals(trader)
-                        otherSignals["日期"] = trade_dates[trade_dates.index(oneEndDate) - 1]
+                        otherSignals["日期"] = trade_dates[trade_dates.index(oneEndDate)]
                         otherSignals["倒1K状态"] = trader.s["日线_倒1K_状态"].split("_")[0]
-                        trader.open_in_browser(filePath=os.path.join(strategyFolderPath, oneStock + "_" + trade_dates[trade_dates.index(oneEndDate) - 1]) + '.html')
+                        trader.open_in_browser(filePath=os.path.join(strategyFolderPath, oneStock + "_" + trade_dates[trade_dates.index(oneEndDate)]) + '.html')
 
                         resultDataFrame = resultDataFrame.append(
-                            {"日期": otherSignals["日期"], "标的": oneStock, "3K形态":otherSignals["3K形态"], "倒1K状态":otherSignals["倒1K状态"], "回调幅度":float(detailSignal[1]), "最后一笔天数":float(detailSignal[2]), "震荡时间":int(detailSignal[3]), "上攻涨幅":float(detailSignal[4])}, ignore_index=True)
+                            {"日期": otherSignals["日期"], "标的": oneStock, "3K形态":otherSignals["3K形态"], "倒1K状态":otherSignals["倒1K状态"], "回调幅度":float(detailSignal[1]), "最后三笔天数":float(detailSignal[2]), "震荡时间":int(detailSignal[3]), "上攻涨幅":float(detailSignal[4])}, ignore_index=True)
                         # dingmessage(oneStock + "_" + str(trader.s['dt']) + "_" + "3根K线_中枢共振看多")
                         # oneEndDate是第二天的日期，比如出现了看多在5号，oneEndDate是6号
                         print(resultDataFrame)
@@ -199,10 +205,10 @@ def backtest(stocks):
             # 筛选
             # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['3K形态'] == '底分型强势')]
             # resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '下跌']
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.3]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.3]
             resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['最后一笔天数'] <10]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['最后三笔天数'] <10]
             kaicangPrice = 0
             for oneDay in resultDataFrame['日期'].values.tolist():
                 if oneDay in btStock.keys():
@@ -224,7 +230,8 @@ def backtest(stocks):
                 openPrice = nextDay["open"].iloc[0]
                 if kaicangPrice == 0:
                     kaicangPrice = openPrice
-                    print("{}, {} 开盘价开仓: {}".format(nextDay["ts_code"].iloc[0], trade_dates[trade_dates.index(oneDay) + 1], str(open)))
+                    print(resultDataFrame)
+                    # print("{}, {} 开盘价开仓: {}".format(nextDay["ts_code"].iloc[0], trade_dates[trade_dates.index(oneDay) + 1], str(open)))
                 # 计算第二天是高开还是低开
                 if openPrice >= preclose:
                     gaokaiNextDay += 1
@@ -234,14 +241,22 @@ def backtest(stocks):
                 next60DatasDF = probar.iloc[currentDay.index.values[0]+1:currentDay.index.values[0]+61]
                 # 买点出现后最高价出现的index
                 ind = next60DatasDF["close"].idxmax()
+                ind2 = next60DatasDF["close"].idxmin()
                 # 最高价当天的具体数据
                 maxDayData = next60DatasDF.loc[ind]
+                minDayData = next60DatasDF.loc[ind2]
                 maxZhangfu = (maxDayData["close"] - preclose) / preclose
+                maxDiefu = (minDayData["close"] - preclose) / preclose
                 if maxZhangfu > maxZF:
                     maxZF = maxZhangfu
                     print("最大涨幅股票:" + oneStock)
                     print("最大涨幅是: " + str(maxZhangfu))
                     print("买点出现时间: " + oneDay + " 第: " + str(ind-100) + " 天, 收盘价: " + str(maxDayData["close"]))
+                if maxDiefu < maxDF:
+                    maxDF = maxDiefu
+                    print("最大跌幅股票:" + oneStock)
+                    print("最大跌幅是: " + str(maxDiefu))
+                    print("买点出现时间: " + oneDay + " 第: " + str(ind2-100) + " 天, 收盘价: " + str(minDayData["close"]))
                 # 计算在出信号后第二天开盘价买入，持有一天后的开盘价收益(%)
                 hold1Day = currentDay["n1b"].iloc[0] / 100
                 n1bResult.append(hold1Day)
@@ -259,7 +274,7 @@ def backtest(stocks):
         print("总共交易 {} 次".format(gaokaiNextDay + dikaiNextDay))
         print("高开占比 {}".format(gaokaiNextDay / (gaokaiNextDay + dikaiNextDay)))
         print("1天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n1bResult)), str(np.median(n1bResult))))
-        print("3天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n3bResult)), str(np.median(n3bResult))))
+        print("3天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n3bResult)), str(np.median([x for x in n3bResult if math.isnan(x) == False]))))
         print("5天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n5bResult)), str(np.median([x for x in n5bResult if math.isnan(x) == False]))))
         print("21天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n21bResult)), str(np.median([x for x in n21bResult if math.isnan(x) == False]))))
 
@@ -278,6 +293,7 @@ if __name__ == '__main__':
         process = [Process(target=backtest, args=(allStockCodes[0:1000],)),
                    Process(target=backtest, args=(allStockCodes[1000:2000],)),
                    Process(target=backtest, args=(allStockCodes[2000:3000],)),
-                   Process(target=backtest, args=(allStockCodes[3000:4000],)), ]
+                   Process(target=backtest, args=(allStockCodes[3000:4000],)),
+                   Process(target=backtest, args=(allStockCodes[4000:],)), ]
         [p.start() for p in process]
         [p.join() for p in process]

@@ -24,7 +24,8 @@ import dill
 
 # =======================================================================================================
 # 基础参数配置
-ct_path = "/Volumes/OuGuMore/Stock/etf/data"
+# ct_path = "/Volumes/OuGuMore/Stock/etf/data"
+ct_path = "/Users/guyeqi/Documents/Python/data/realtime/etfdata"
 os.makedirs(ct_path, exist_ok=True)
 allStocks = get_all_etfs()
 stockDf = pd.DataFrame(allStocks, columns=['ts_code', 'name'])
@@ -253,6 +254,24 @@ events_monitor = [
     Event(name="vg三买", operate=Operate.LO, factors=[
         Factor(name="日线_60分钟_vg三买", signals_all=[Signal("日线_60分钟_vg三买_确认_任意_任意_0")]),
     ]),
+
+    Event(name="vg三买确认", operate=Operate.LO, factors=[
+        Factor(name="日线_60分钟_vg三买确认", signals_all=[Signal("日线_60分钟_vg三买确认_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="vg一买", operate=Operate.LO, factors=[
+        Factor(name="日线_vg一买", signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="30分钟_vg一买", signals_all=[Signal("30分钟_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="60分钟_vg一买", signals_all=[Signal("60分钟_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="周线_vg一买", signals_all=[Signal("周线_vg一买_任意_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="vg潜在一买", operate=Operate.LO, factors=[
+        Factor(name="日线_vg潜在一买", signals_all=[Signal("日线_vg潜在一买_任意_确认_任意_任意_0")]),
+        Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+        Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+        Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
+    ]),
 ]
 
 
@@ -279,7 +298,7 @@ def monitor(use_cache=True):
                 hasChange = updateKline(ct)
             else:
                 kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
-                                 freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'], asset='FD')
+                                 freqs=['30分钟', '60分钟', '日线', '周线'], asset='FD')
                 ct = create_advanced_trader(bg=kg, raw_bars=[], strategy=trader_strategy_custom)
                 hasChange = True
             if hasChange:
@@ -314,7 +333,7 @@ def monitor(use_cache=True):
 def get_init_bg(symbol: str,
                 end_dt: [str, datetime],
                 base_freq: str,
-                freqs=('1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'),
+                freqs=('30分钟', '60分钟', '日线'),
                 max_count=1000,
                 adjust='qfq',
                 asset='E'):
@@ -333,7 +352,7 @@ def get_init_bg(symbol: str,
     if "周线" in freqs or "月线" in freqs:
         d_bars = get_kline(ts_code=symbol, start_date=last_day - timedelta(days=2500), end_date=last_day,
                            freq=freq_cn_map["日线"], asset=asset)
-        bgd = BarGenerator("日线", ['周线', '月线'])
+        bgd = BarGenerator("日线", ['周线'])
         for b in d_bars:
             bgd.update(b)
     else:

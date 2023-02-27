@@ -715,7 +715,8 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
 
         # 倒0笔长度
         # 原来是分型最左边，理论上底分型完成，倒0笔长度是3？
-        bars_ubi = [x for x in c.bars_raw[-20:] if x.dt >= bis[-1].fx_b.elements[0].dt]
+        # bars_ubi = [x for x in c.bars_raw[-20:] if x.dt >= bis[-1].fx_b.elements[0].dt]
+        bars_ubi = [x for x in c.bars_raw[-20:] if x.dt >= bis[-1].fx_b.raw_bars[-3].dt]
         if len(bars_ubi) >= 9:
             v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="9根K线以上")
         elif 9 > len(bars_ubi) > 5:
