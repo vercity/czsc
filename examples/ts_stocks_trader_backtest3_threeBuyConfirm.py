@@ -109,7 +109,7 @@ def trader_strategy_backtestThis(symbol):
     return tactic
 
 
-isBackTestResult = False
+isBackTestResult = True
 # ssss = np.load(os.path.join(strategyFolderPath, "btStock") + '.npy', allow_pickle=True).item()
 btStock = {}
 
@@ -205,10 +205,10 @@ def backtest(stocks):
             # 筛选
             # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['3K形态'] == '底分型强势')]
             # resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '下跌']
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.3]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.3]
             resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['最后三笔天数'] <10]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['最后三笔天数'] < 30]
             kaicangPrice = 0
             for oneDay in resultDataFrame['日期'].values.tolist():
                 if oneDay in btStock.keys():

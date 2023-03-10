@@ -183,8 +183,8 @@ def trader_strategy_custom(symbol):
             if oneFreq == '日线':
                 s.update(cxt_vg_threeBuy(cat, "日线", "60分钟"))
                 s.update(cxt_vg_threeBuyConfirm(cat, "日线", "60分钟"))
+                s.update(cxt_vg_fakeOneBuy(cat, oneFreq))
             s.update(cxt_vg_oneBuy(cat, oneFreq))
-            s.update(cxt_vg_fakeOneBuy(cat, oneFreq))
             # for di in range(1, 8):
             #     s.update(get_s_three_bi(cat.kas[oneFreq], di))
 

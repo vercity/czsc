@@ -21,6 +21,7 @@ from czsc.traders import CzscAdvancedTrader
 from czsc.traders import create_advanced_trader
 from czsc.strategies import trader_strategy_custom
 import dill
+from czsc.utils.dingding import dingmessage
 
 # =======================================================================================================
 # 基础参数配置
@@ -319,6 +320,17 @@ def monitor(use_cache=True):
                         msg += "监控提醒：{}@{} [{}], {}\n".format(event.name, f, ct.s[daoZeroKey], ct.s[f])
                     else:
                         msg += "监控提醒：{}@{} [{}]\n".format(event.name, f, ct.s[daoZeroKey])
+
+                    if "3根K线" in ct.s[daoZeroKey]:
+                        if f == "日线_vg一买":
+                            confirm, zhongshu, bipower,score = ct.s[f].split("_")
+                            bi1power, bi2power = bipower.split("-")
+                            if float(bi1power) > float(bi2power):
+                                dingmessage("【抄底】\n" + msg.strip("\n"))
+                        elif f == "日线_60分钟_vg三买":
+                            confirm, huitiao, dao0length, zhendanglength, dao1power = ct.s[f].split("_")
+                            if float(huitiao) < 0.35 and int(dao0length) < 10 and int(zhendanglength) > 39 and float(dao1power) < 1:
+                                dingmessage("【追涨】\n" + msg.strip("\n"))
             print(msg)
             # if "监控提醒" in msg:
             #     dingmessage(msg.strip("\n"))
@@ -338,6 +350,7 @@ def get_init_bg(symbol: str,
                 adjust='qfq',
                 asset='E'):
     """获取 symbol 的初始化 bar generator"""
+
     # if isinstance(end_dt, str):
     #     end_dt = pd.to_datetime(end_dt, utc=True)
     #     end_dt = end_dt.tz_convert('dateutil/PRC')

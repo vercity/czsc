@@ -26,6 +26,8 @@ from czsc.traders import CzscAdvancedTrader
 from czsc.traders import create_advanced_trader
 from czsc.strategies import trader_strategy_custom
 import dill
+from czsc.utils.dingding import dingmessage
+import numpy as np
 
 # =======================================================================================================
 # 基础参数配置
@@ -548,9 +550,9 @@ events_monitor = [
 
     Event(name="vg潜在一买", operate=Operate.LO, factors=[
         Factor(name="日线_vg潜在一买", signals_all=[Signal("日线_vg潜在一买_任意_确认_任意_任意_0")]),
-        Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
-        Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
-        Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
+        # Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+        # Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+        # Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
     ]),
 
     # # 开多
@@ -658,6 +660,12 @@ def monitor(use_cache=True):
 
     # print(len(symbols))
     k = 1
+    try:
+        threeBuyResult = pd.read_csv('/Users/guyeqi/Documents/Python/data/backtest/data/vg三买，day-60min20150101/finalResult.csv')
+        # df.set_index('姓名', inplace=True)
+        print()
+    except Exception as e:
+        print(e)
     for s in allcodes:
         print(k)
         if s.endswith('BJ'):
@@ -691,6 +699,94 @@ def monitor(use_cache=True):
                         msg += "监控提醒：{}@{} [{}], {}\n".format(event.name, f, ct.s[daoZeroKey], ct.s[f])
                     else:
                         msg += "监控提醒：{}@{} [{}]\n".format(event.name, f, ct.s[daoZeroKey])
+
+                    if "3根K线" in ct.s[daoZeroKey]:
+                        if f == "日线_vg一买":
+                            confirm, zhongshu, bipower,score = ct.s[f].split("_")
+                            bi1power, bi2power = bipower.split("-")
+                            if float(bi1power) > float(bi2power):
+                                dingmessage("【抄底】\n" + msg.strip("\n"))
+                        elif f == "日线_60分钟_vg三买":
+                            confirm, huitiao, dao0length, zhendanglength, dao1power = ct.s[f].split("_")
+                            tmpThreeBuyResult = threeBuyResult.copy(deep=True)
+                            tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['最后一笔天数'] == int(dao0length)]
+                            if float(dao1power) < 1:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['上攻涨幅'] > (float(dao1power) - 0.05)]
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['上攻涨幅'] < (float(dao1power) + 0.05)]
+                            elif float(dao1power) > 1 and float(dao1power) < 1.5:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['上攻涨幅'] > (float(dao1power) - 0.1)]
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['上攻涨幅'] < (float(dao1power) + 0.1)]
+                            elif float(dao1power) > 1.5 and float(dao1power) < 2:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['上攻涨幅'] > (float(dao1power) - 0.2)]
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['上攻涨幅'] < (float(dao1power) + 0.2)]
+                            else:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['上攻涨幅'] > 2]
+
+                            if float(huitiao) < 0.2:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['回调幅度'] > (float(huitiao) - 0.02)]
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['回调幅度'] < (float(huitiao) + 0.02)]
+                            elif float(huitiao) >=0.2 and float(huitiao) < 0.6:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['回调幅度'] > (float(huitiao) - 0.03)]
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['回调幅度'] < (float(huitiao) + 0.03)]
+                            else:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['回调幅度'] >= 0.6]
+
+                            if int(zhendanglength) < 20:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] ==  int(zhendanglength)]
+                            elif int(zhendanglength) >=20 and int(zhendanglength) < 40:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] > (int(zhendanglength) - 2)]
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] < (int(zhendanglength) + 2)]
+                            elif int(zhendanglength) >= 40 and int(zhendanglength) < 60:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] > (int(zhendanglength) - 5)]
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] < (int(zhendanglength) + 5)]
+                            elif int(zhendanglength) >= 60 and int(zhendanglength) < 100:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] > (int(zhendanglength) - 10)]
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] < (int(zhendanglength) + 10)]
+                            else:
+                                tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] >= 100]
+
+                            isLikeOK = False
+                            if float(huitiao) < 0.35 and int(dao0length) < 10 and int(zhendanglength) > 39 and float(
+                                    dao1power) < 1:
+                                isLikeOK = True
+
+                            if isLikeOK:
+                                dingMSG = '【追涨-还可以】\n'
+                            else:
+                                dingMSG = '【追涨-看一眼】\n'
+                            dingMSG += f"标的代码：{s}\n"
+                            dingMSG += f"标的名称：{stockDf.loc[stockDf['ts_code'] == s]['name'].values[0]}\n"
+                            dingMSG += "最后一笔天数：{} \n".format(str(dao0length))
+                            dingMSG += "上攻涨幅：{} \n".format(
+                                str(dao1power).split('.')[0] + '.' + str(dao1power).split('.')[1][:2])
+                            dingMSG += "回调幅度：{} \n".format(
+                                str(huitiao).split('.')[0] + '.' + str(huitiao).split('.')[1][:2])
+                            dingMSG += "震荡时间：{} \n".format(str(zhendanglength))
+                            if tmpThreeBuyResult.empty == False:
+                                dingMSG += "相似形态个数：{}\n".format(str(tmpThreeBuyResult.shape[0]))
+                                dingMSG += "【平均】 "
+                                dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format(
+                                    round(np.nanmean(tmpThreeBuyResult['n1b']), 2), round(np.nanmean(tmpThreeBuyResult['n2b']), 2),
+                                    round(np.nanmean(tmpThreeBuyResult['n3b']), 2), round(np.nanmean(tmpThreeBuyResult['n5b']), 2),
+                                    round(np.nanmean(tmpThreeBuyResult['n8b']), 2), round(np.nanmean(tmpThreeBuyResult['n13b']), 2),
+                                    round(np.nanmean(tmpThreeBuyResult['n21b']), 2))
+                                dingMSG += "【中位数】 "
+                                dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format(
+                                    round(np.median(tmpThreeBuyResult['n1b']), 2), round(np.median(tmpThreeBuyResult['n2b']), 2),
+                                    round(np.median(tmpThreeBuyResult['n3b']), 2), round(np.median(tmpThreeBuyResult['n5b']), 2),
+                                    round(np.median(tmpThreeBuyResult['n8b']), 2), round(np.median(tmpThreeBuyResult['n13b']), 2),
+                                    round(np.median(tmpThreeBuyResult['n21b']), 2))
+                                dingMSG += "【胜率】 "
+                                dingMSG += "n1b: {}% | n2b: {}%  | n3b: {}%  | n5b: {}%  | n8b: {}%  | n13b: {}%  | n21b: {}%\n".format(
+                                    round(tmpThreeBuyResult['n1b'][tmpThreeBuyResult['n1b'] > 0].count() / tmpThreeBuyResult['n1b'].count() * 100, 2), round(tmpThreeBuyResult['n2b'][tmpThreeBuyResult['n2b'] > 0].count() / tmpThreeBuyResult['n2b'].count() * 100, 2),
+                                    round(tmpThreeBuyResult['n3b'][tmpThreeBuyResult['n3b'] > 0].count() / tmpThreeBuyResult['n3b'].count() * 100, 2), round(tmpThreeBuyResult['n5b'][tmpThreeBuyResult['n5b'] > 0].count() / tmpThreeBuyResult['n5b'].count() * 100, 2),
+                                    round(tmpThreeBuyResult['n8b'][tmpThreeBuyResult['n8b'] > 0].count() / tmpThreeBuyResult['n8b'].count() * 100, 2), round(tmpThreeBuyResult['n13b'][tmpThreeBuyResult['n13b'] > 0].count() / tmpThreeBuyResult['n13b'].count() * 100, 2),
+                                    round(tmpThreeBuyResult['n21b'][tmpThreeBuyResult['n21b'] > 0].count() / tmpThreeBuyResult['n21b'].count() * 100, 2))
+                                for i, row in tmpThreeBuyResult.iterrows():
+                                    dingMSG += f"【参考标的】：{stockDf.loc[stockDf['ts_code'] == row['ts_code']]['name'].values[0]}， 代码： " + row['ts_code'] + "， 时间：" + row['trade_date'] + '\n'
+                                    dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format((str(row['n1b']).split('.')[0] + '.' + str(row['n1b']).split('.')[1][:2]),(str(row['n2b']).split('.')[0] + '.' + str(row['n2b']).split('.')[1][:2]),(str(row['n3b']).split('.')[0] + '.' + str(row['n3b']).split('.')[1][:2]),(str(row['n5b']).split('.')[0] + '.' + str(row['n5b']).split('.')[1][:2]),(str(row['n8b']).split('.')[0] + '.' + str(row['n8b']).split('.')[1][:2]),(str(row['n13b']).split('.')[0] + '.' + str(row['n13b']).split('.')[1][:2]),(str(row['n21b']).split('.')[0] + '.' + str(row['n21b']).split('.')[1][:2]))
+                                print(dingMSG)
+                            dingmessage(dingMSG, shouldAt=isLikeOK)
             print(msg)
             # if "监控提醒" in msg:
             #     dingmessage(msg.strip("\n"))

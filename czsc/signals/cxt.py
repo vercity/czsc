@@ -12,6 +12,7 @@ from czsc import CZSC, Signal, CzscAdvancedTrader
 from czsc.objects import FX, BI, Direction, ZS,FakeBI
 from czsc.utils import get_sub_elements
 from collections import OrderedDict
+import  copy
 
 
 def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
@@ -408,7 +409,7 @@ def cxt_vg_threeBuy(cat: CzscAdvancedTrader, freq='日线', sub_freq='30分钟',
     # Signal('日线_30分钟_vg三买_确认_38.2_10_0')
     # 确认_{回调幅度相对于倒数第二笔}_{最后一笔天数}_震荡天数_倒数第二笔上攻涨幅
     c: CZSC = cat.kas[freq]
-    sub_c: CZSC = cat.kas[sub_freq]
+    # sub_c: CZSC = cat.kas[sub_freq]
 
     v1 = "其他"
     v2 = "0"
@@ -424,12 +425,18 @@ def cxt_vg_threeBuy(cat: CzscAdvancedTrader, freq='日线', sub_freq='30分钟',
         biCount = sum([x.length for x in c.bi_list[-5:-2]])
         if last_bi.low > zs.gg:
             # 从倒数第六根开始往前推震荡区间，假设往前推笔，最高点不高于倒1的最低，最低点低于zs的10%，就算震荡
-            for i in range(5, c.bi_list.__len__())[::-1]:
-                thisB = c.bi_list[i]
-                if thisB.high >= last_bi.low:
+            index = 0
+            for i in reversed(c.bi_list[0:-5]):
+                thisB = i
+                if thisB.high > last_bi.low:
                     break
-                if thisB.low < zs.dd * 0.9:
-                    break
+                if index % 2 == 0:
+                    if thisB.low > zs.zg:
+                        break
+                else:
+                    if thisB.high < zs.zd:
+                        break
+                index += 1
                 # 加上这一笔的长度
                 biCount = biCount + thisB.length
             v1 = "确认"
@@ -577,7 +584,7 @@ def cxt_vg_fakeOneBuy(cat: CzscAdvancedTrader, freq='日线') -> OrderedDict:
         s[defaultSignal.key] = defaultSignal.value
         return s
 
-    tmp_list = c.bi_list
+    tmp_list = copy.deepcopy(c.bi_list)
     fake_bi = FakeBI(symbol=c.symbol, sdt=c.bars_ubi[1].dt, edt=c.bars_ubi[-1].dt, direction=Direction.Down,
                      high=c.bars_ubi[1].high, low=c.bars_ubi[-1].low, power=round(c.bars_ubi[1].high - c.bars_ubi[-1].low, 2))
     tmp_list.append(fake_bi)
