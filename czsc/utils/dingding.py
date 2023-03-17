@@ -2,9 +2,8 @@
 import requests
 import json
 
-def dingmessage(dingMessage, shouldAt = False):
-    # 请求的URL，WebHook地址
-    webhook = "https://oapi.dingtalk.com/robot/send?access_token=48c7a649e0f1b4be1e699461a93e6392010074b07f48c60c058927b8f406423a"
+def dingmessage(dingMessage, shouldAt = False, webhook = "https://oapi.dingtalk.com/robot/send?access_token=48c7a649e0f1b4be1e699461a93e6392010074b07f48c60c058927b8f406423a"):
+    return
     # 构建请求头部
     header = {
         "Content-Type": "application/json",

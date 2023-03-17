@@ -8,6 +8,8 @@ import os
 import sys
 import math
 
+from czsc.signals import bar_vol_bs1_V230224, bar_reversal_V230227, tas_first_bs_V230217
+
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
@@ -15,8 +17,8 @@ import pandas as pd
 from czsc.data.ts_cache import TsDataCache
 from czsc import CZSC, Freq
 from czsc.utils import BarGenerator
-from czsc.strategies import trader_strategy_backtest3
-from czsc.traders.base import CzscSignals, CzscAdvancedTrader
+from czsc.strategies import  CzscStrategyBase
+from czsc.traders.base import CzscSignals,  CzscTrader
 from czsc.objects import Signal, Factor, Event, Operate
 from czsc.data.ts import get_kline, freq_cn_map, dt_fmt, date_fmt, get_all_stocks
 from czsc.utils.dingding import dingmessage
@@ -70,15 +72,18 @@ n3bResult = []
 n5bResult = []
 n21bResult = []
 
+class CzscStocksCustomBacktest(CzscStrategyBase):
+    """CZSC 股票 Custom 策略"""
 
-def trader_strategy_backtestThis(symbol):
-    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
+    @classmethod
+    def get_signals(cls, cat) -> OrderedDict:
         if cat.s:
             dictMerge = cat.s.copy()
         else:
             dictMerge = OrderedDict()
-
         for oneFreq in cat.kas.keys():
             s = OrderedDict({"symbol": cat.kas[oneFreq].symbol, "dt": cat.kas[oneFreq].bars_raw[-1].dt,
                              "close": cat.kas[oneFreq].bars_raw[-1].close})
@@ -92,22 +97,13 @@ def trader_strategy_backtestThis(symbol):
 
         return dictMerge
 
-    tactic = {
-        "base_freq": '日线',
-        "freqs": ['日线'],
-        "get_signals": get_signals,
-        "signals_n": 0,
+    @property
+    def positions(self):
+        return []
 
-        "long_pos": None,
-        "long_events": None,
-
-        # 空头策略不进行定义，也就是不做空头交易
-        "short_pos": None,
-        "short_events": None,
-    }
-
-    return tactic
-
+    @property
+    def freqs(self):
+        return ['日线']
 
 isBackTestResult = True
 # ssss = np.load(os.path.join(strategyFolderPath, "btStock") + '.npy', allow_pickle=True).item()
@@ -133,7 +129,10 @@ def calculateOtherSignals(c):
                 signal = "顶分型强势"
         elif tri[0].high > tri[1].high > tri[2].high:
             signal = "向下走"
-    return {"3K形态" : signal}
+    return {"3K形态": signal,
+            "BS1辅助": bar_vol_bs1_V230224(c.kas['日线'])["日线_D1N20量价_BS1辅助"].split("_")[0],
+            "反转迹象": bar_reversal_V230227(c.kas['日线'])["日线_D1A300_反转V230227"].split("_")[0],
+            "TAS一买": tas_first_bs_V230217(c.kas['日线'])["日线_D1N10SMA5_BS1辅助"].split("_")[0]}
 
 def backtest(stocks):
     global dikaiNextDay, gaokaiNextDay
@@ -146,7 +145,7 @@ def backtest(stocks):
             continue
         if oneStock == '002683.SZ' or oneStock == '300176.SZ' or oneStock == '600979.SH':
             continue
-        resultDataFrame = pd.DataFrame(columns=["日期", "标的", "3K形态", "倒1K状态", "回调幅度", "最后一笔天数", "震荡时间", "上攻涨幅"])
+        resultDataFrame = pd.DataFrame(columns=["日期", "标的", "3K形态", "倒1K状态", "回调幅度", "最后一笔天数", "震荡时间", "上攻涨幅", "BS1辅助","反转迹象","TAS一买"])
         print(oneStock)
 
         stockPath = os.path.join(strategyFolderPath, oneStock) + '.pkl'
@@ -175,7 +174,7 @@ def backtest(stocks):
                 bg.init_freq_bars('日线', barMin)
                 # for bar in barMin:
                 #     bg.update(bar)
-                trader = CzscAdvancedTrader(bg, trader_strategy_backtestThis)
+                trader = CzscTrader(bg=bg, get_signals=CzscStocksCustomBacktest.get_signals)
                 print(trader.s['dt'])
                 kCount = trader.s['日线_倒0笔_长度']
                 # zhongshugongzhenSignal = trader.s['日线_60分钟_中枢共振']
@@ -189,13 +188,14 @@ def backtest(stocks):
                         otherSignals = calculateOtherSignals(trader)
                         otherSignals["日期"] = trade_dates[trade_dates.index(oneEndDate)]
                         otherSignals["倒1K状态"] = trader.s["日线_倒1K_状态"].split("_")[0]
-                        trader.open_in_browser(filePath=os.path.join(strategyFolderPath, oneStock + "_" + trade_dates[trade_dates.index(oneEndDate)] + "_" + sanmaihuicaiSignal) + '.html')
+                        # trader.open_in_browser(filePath=os.path.join(strategyFolderPath, oneStock + "_" + trade_dates[trade_dates.index(oneEndDate)] + "_" + sanmaihuicaiSignal) + '.html')
 
                         resultDataFrame = resultDataFrame.append(
-                            {"日期": otherSignals["日期"], "标的": oneStock, "3K形态":otherSignals["3K形态"], "倒1K状态":otherSignals["倒1K状态"], "回调幅度":float(detailSignal[1]), "最后一笔天数":float(detailSignal[2]), "震荡时间":int(detailSignal[3]), "上攻涨幅":float(detailSignal[4])}, ignore_index=True)
+                            {"日期": otherSignals["日期"], "标的": oneStock, "3K形态":otherSignals["3K形态"], "倒1K状态":otherSignals["倒1K状态"], "回调幅度":float(detailSignal[1]), "最后一笔天数":float(detailSignal[2]), "震荡时间":int(detailSignal[3]), "上攻涨幅":float(detailSignal[4]),
+                             "BS1辅助":otherSignals["BS1辅助"],"反转迹象":otherSignals["反转迹象"],"TAS一买":otherSignals["TAS一买"]}, ignore_index=True)
                         # dingmessage(oneStock + "_" + str(trader.s['dt']) + "_" + "3根K线_中枢共振看多")
                         # oneEndDate是第二天的日期，比如出现了看多在5号，oneEndDate是6号
-                        # print(resultDataFrame)
+                        print(resultDataFrame)
             # 保存开多日期
             save_pkl(resultDataFrame, stockPath)
             if len(resultDataFrame) == 0:
@@ -206,10 +206,17 @@ def backtest(stocks):
             # 筛选
             # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['3K形态'] == '底分型强势')]
             # resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '上涨']
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.35]
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['最后一笔天数'] < 10]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.35]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] > 0.5]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 80]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['最后一笔天数'] < 9]
+            # if 'TAS一买' in resultDataFrame:
+            #     resultDataFrame = resultDataFrame.loc[resultDataFrame['TAS一买'] == '一买']
+            # if 'BS1辅助' in resultDataFrame:
+            #     resultDataFrame = resultDataFrame.loc[resultDataFrame['BS1辅助'] == '看多']
+            # if '反转迹象' in resultDataFrame:
+            #     resultDataFrame = resultDataFrame.loc[resultDataFrame['反转迹象'] == '看多']
             kaicangPrice = 0
             for oneDay in resultDataFrame['日期'].values.tolist():
                 if oneDay in btStock.keys():
@@ -290,13 +297,10 @@ def backtest(stocks):
         # 统计汇总
         print("总共交易 {} 次".format(gaokaiNextDay + dikaiNextDay))
         print("高开占比 {}".format(gaokaiNextDay / (gaokaiNextDay + dikaiNextDay)))
-        print("1天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n1bResult)), str(np.median(n1bResult))))
-        print("3天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n3bResult)),
-                                         str(np.median([x for x in n3bResult if math.isnan(x) == False]))))
-        print("5天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n5bResult)),
-                                         str(np.median([x for x in n5bResult if math.isnan(x) == False]))))
-        print("21天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n21bResult)),
-                                          str(np.median([x for x in n21bResult if math.isnan(x) == False]))))
+        print("1天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n1bResult)), str(np.median(n1bResult)), str(len( [i for i in n1bResult if i >=0])/len(n1bResult))))
+        print("3天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n3bResult)), str(np.median([x for x in n3bResult if math.isnan(x) == False])), str(len( [i for i in n3bResult if i >=0])/len(n3bResult))))
+        print("5天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n5bResult)), str(np.median([x for x in n5bResult if math.isnan(x) == False])), str(len( [i for i in n5bResult if i >=0])/len(n5bResult))))
+        print("21天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n21bResult)), str(np.median([x for x in n21bResult if math.isnan(x) == False])), str(len( [i for i in n21bResult if i >=0])/len(n21bResult))))
 
         tf = open(os.path.join(strategyFolderPath, "btStock") + '.json', "w")
         json.dump(btStock, tf)

@@ -17,9 +17,8 @@ from czsc.data.ts import get_kline, get_all_etfs
 import pandas as pd
 from czsc.enum import Freq
 from czsc.utils.bar_generator import BarGenerator
-from czsc.traders import CzscAdvancedTrader
-from czsc.traders import create_advanced_trader
-from czsc.strategies import trader_strategy_custom
+from czsc.traders import CzscSignals, CzscTrader
+from czsc.strategies import CzscStrategyBase, CzscStocksCustom
 import dill
 from czsc.utils.dingding import dingmessage
 
@@ -267,11 +266,80 @@ events_monitor = [
         Factor(name="周线_vg一买", signals_all=[Signal("周线_vg一买_任意_确认_任意_任意_0")]),
     ]),
 
+    Event(name="vg简单一买", operate=Operate.LO, factors=[
+        Factor(name="日线_vg简单一买", signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0")]),
+        Factor(name="30分钟_vg简单一买", signals_all=[Signal("30分钟_vg简单一买_任意_确认_任意_任意_0")]),
+        Factor(name="60分钟_vg简单一买", signals_all=[Signal("60分钟_vg简单一买_任意_确认_任意_任意_0")]),
+        Factor(name="周线_vg简单一买", signals_all=[Signal("周线_vg简单一买_任意_确认_任意_任意_0")]),
+    ]),
+
     Event(name="vg潜在一买", operate=Operate.LO, factors=[
         Factor(name="日线_vg潜在一买", signals_all=[Signal("日线_vg潜在一买_任意_确认_任意_任意_0")]),
-        Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
-        Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
-        Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
+        # Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+        # Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+        # Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="反转迹象", operate=Operate.LO, factors=[
+        Factor(name="日线_反转迹象", signals_all=[Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
+        Factor(name="30分钟_反转迹象", signals_all=[Signal("30分钟_D1A300_反转V230227_看多_任意_任意_0")]),
+        Factor(name="60分钟_反转迹象", signals_all=[Signal("60分钟_D1A300_反转V230227_看多_任意_任意_0")]),
+        Factor(name="周线_反转迹象", signals_all=[Signal("周线_D1A300_反转V230227_看多_任意_任意_0")]),
+    ]),
+
+    Event(name="辅助一买", operate=Operate.LO, factors=[
+        Factor(name="日线_辅助一买", signals_all=[Signal("日线_D1N20量价_BS1辅助_看多_任意_任意_0")]),
+        Factor(name="30分钟_辅助一买", signals_all=[Signal("30分钟_D1N20量价_BS1辅助_看多_任意_任意_0")]),
+        Factor(name="60分钟_辅助一买", signals_all=[Signal("60分钟_D1N20量价_BS1辅助_看多_任意_任意_0")]),
+        Factor(name="周线_辅助一买", signals_all=[Signal("周线_D1N20量价_BS1辅助_看多_任意_任意_0")]),
+    ]),
+
+    Event(name="TAS一买", operate=Operate.LO, factors=[
+        Factor(name="日线_TAS一买", signals_all=[Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+        Factor(name="30分钟_TAS一买", signals_all=[Signal("30分钟_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+        Factor(name="60分钟_TAS一买", signals_all=[Signal("60分钟_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+        Factor(name="周线_TAS一买", signals_all=[Signal("周线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+    ]),
+
+    Event(name="vg一买反转orTAS", operate=Operate.LO, factors=[
+        Factor(name="日线_vg一买反转orTAS", signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0")],
+               signals_any=[Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0"),
+                            Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
+    ]),
+
+    Event(name="vg一买反转andTAS", operate=Operate.LO, factors=[
+        Factor(name="日线_vg一买反转andTAS",
+               signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0"),
+                            Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+    ]),
+
+    Event(name="vg简单一买反转", operate=Operate.LO, factors=[
+        Factor(name="日线_vg简单一买反转",
+               signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
+    ]),
+
+    Event(name="vg简单一买反转TAS", operate=Operate.LO, factors=[
+        Factor(name="日线_vg简单一买反转TAS",
+               signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0"),
+                            Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+    ]),
+
+    Event(name="vg复杂一买反转", operate=Operate.LO, factors=[
+        Factor(name="日线_vg复杂一买反转",
+               signals_all=[Signal("日线_vg复杂一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
+        Factor(name="周线_vg复杂一买反转",
+               signals_all=[Signal("周线_vg复杂一买_任意_确认_任意_任意_0"), Signal("周线_D1A300_反转V230227_看多_任意_任意_0")]),
+        Factor(name="60分钟_vg复杂一买反转",
+               signals_all=[Signal("60分钟_vg复杂一买_任意_确认_任意_任意_0"), Signal("60分钟_D1A300_反转V230227_看多_任意_任意_0")]),
+    ]),
+
+    Event(name="vg复杂一买多中枢", operate=Operate.LO, factors=[
+        Factor(name="日线_vg复杂一买多中枢",signals_all=[],
+               signals_any=[Signal("日线_vg复杂一买_任意_确认_2_任意_0"), Signal("日线_vg复杂一买_任意_确认_3_任意_0")]),
+        Factor(name="周线_vg复杂一买2中枢",signals_all=[],
+               signals_any=[Signal("周线_vg复杂一买_任意_确认_2_任意_0"), Signal("周线_vg复杂一买_任意_确认_3_任意_0")]),
+        Factor(name="60分钟_vg复杂一买2中枢",signals_all=[],
+               signals_any=[Signal("60分钟_vg复杂一买_任意_确认_2_任意_0"), Signal("60分钟_vg复杂一买_任意_确认_3_任意_0")]),
     ]),
 ]
 
@@ -292,15 +360,13 @@ def monitor(use_cache=True):
         try:
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct) and use_cache:
-                ct: CzscAdvancedTrader = dill.load(open(file_ct, 'rb'))
-                ct.strategy = trader_strategy_custom
-                tactic = ct.strategy("") if trader_strategy_custom else {}
-                ct.get_signals: Callable = tactic.get('get_signals')
+                ct: CzscTrader = dill.load(open(file_ct, 'rb'))
+                ct.get_signals: Callable = CzscStocksCustom.get_signals
                 hasChange = updateKline(ct)
             else:
                 kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
                                  freqs=['30分钟', '60分钟', '日线', '周线'], asset='FD')
-                ct = create_advanced_trader(bg=kg, raw_bars=[], strategy=trader_strategy_custom)
+                ct = CzscTrader(bg=kg, get_signals=CzscStocksCustom.get_signals)
                 hasChange = True
             if hasChange:
                 dill.dump(ct, open(file_ct, 'wb'))
@@ -322,6 +388,19 @@ def monitor(use_cache=True):
                         msg += "监控提醒：{}@{} [{}]\n".format(event.name, f, ct.s[daoZeroKey])
 
                     if "3根K线" in ct.s[daoZeroKey]:
+                        if f == "日线_vg复杂一买反转":
+                            dingmessage("【抄底】\n" + "看下参数\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg简单一买反转":
+                            dingmessage("【抄底】\n" + "6成胜率\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg简单一买反转TAS":
+                            dingmessage("【抄底】\n" + "6.5成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                                        webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg一买反转orTAS":
+                            dingmessage("【抄底】\n" + "7成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                                        webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg一买反转andTAS":
+                            dingmessage("【抄底】\n" + "必买！！！！！！！\n必买！！！！！！！\n必买！！！！！！！\n8成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                                        webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg一买":
                             confirm, zhongshu, bipower,score = ct.s[f].split("_")
                             bi1power, bi2power = bipower.split("-")
@@ -409,8 +488,7 @@ def get_init_bg(symbol: str,
             bg.update(row)
     return bg
 
-
-def updateKline(trader: CzscAdvancedTrader):
+def updateKline(trader: CzscSignals):
     bars = get_kline(ts_code=trader.symbol, start_date=trader.end_dt, end_date=datetime.now(), freq=Freq.F1, fq=None, asset='FD')
     data = [x for x in bars if x.dt > trader.end_dt]
 
@@ -419,9 +497,6 @@ def updateKline(trader: CzscAdvancedTrader):
         for row in data:
             trader.update(row)
         return True
-    return False
-            # trader.bg.update(row)
-        # trader.end_dt = trader.bg.end_dt
 
 
 if __name__ == '__main__':

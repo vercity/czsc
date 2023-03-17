@@ -7,158 +7,443 @@ describe: 提供一些策略的编写案例
 
 以 trader_ 开头的是择时交易策略案例
 """
+import os
+import shutil
+import pandas as pd
+from copy import deepcopy
+from abc import ABC, abstractmethod
+from loguru import logger
 from czsc import signals
-from czsc.objects import Freq, Operate, Signal, Factor, Event
+from czsc.objects import RawBar, List, Operate, Signal, Factor, Event, Position
 from collections import OrderedDict
-from czsc.traders import CzscAdvancedTrader
-from czsc.objects import PositionLong, PositionShort, RawBar
+from czsc.traders.base import CzscTrader
+from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump
 from czsc.signals.bxt import get_s_like_bs, get_s_d0_bi, get_s_bi_status, get_s_di_bi, get_s_base_xt, get_s_three_bi
 from czsc.signals.ta import get_s_single_k, get_s_three_k, get_s_sma, get_s_macd, get_s_tingdun_k
-from czsc.signals.cxt import cxt_sub_b3_V221212, cxt_zhong_shu_gong_zhen_V221221, cxt_vg_customgongzhen, cxt_vg_threeBuy, cxt_vg_threeBuyConfirm, cxt_vg_oneBuy, cxt_vg_fakeOneBuy
+from czsc.signals.bar import bar_vol_bs1_V230224, bar_reversal_V230227
+from czsc.signals.tas import tas_first_bs_V230217
+from czsc.signals.cxt import cxt_sub_b3_V221212, cxt_zhong_shu_gong_zhen_V221221, cxt_vg_customgongzhen, cxt_vg_threeBuy, cxt_vg_threeBuyConfirm, cxt_vg_oneBuy, cxt_vg_fakeOneBuy, cxt_vg_easyOneBuy, cxt_vg_fuzaOneBuy
 
-
-def trader_standard(symbol, T0=False, min_interval=3600 * 4):
-    """择时策略编写的一些标准说明
-
-    输入参数：
-    1. symbol 是必须要有的，且放在第一个位置，策略初始化过程指明交易哪个标的
-    2. 除此之外的一些策略层面的参数可选，比如 T0，min_interval 等
-
-    :param symbol: 择时策略初始化的必须参数，指明交易哪个标的
-    :param T0:
-    :param min_interval:
-    :return:
+class CzscStrategyBase(ABC):
     """
-    pass
+    择时交易策略的要素：
 
-
-def trader_example1(symbol, T0=False, min_interval=3600 * 4):
-    """A股市场择时策略样例，支持按交易标的独立设置参数
-
-    :param symbol:
-    :param T0: 是否允许T0交易
-    :param min_interval: 最小开仓时间间隔，单位：秒
-    :return:
+    1. 交易品种以及该品种对应的参数
+    2. K线周期列表
+    3. 交易信号计算函数
+    4. 持仓策略列表
     """
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
 
-    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+    @property
+    def symbol(self):
+        """交易标的"""
+        return self.kwargs['symbol']
+
+    @property
+    def sorted_freqs(self):
+        """排好序的 K 线周期列表"""
+        return freqs_sorted(self.freqs)
+
+    @property
+    def base_freq(self):
+        """基础 K 线周期"""
+        return self.sorted_freqs[0]
+
+    @abstractmethod
+    def get_signals(cls, **kwargs) -> OrderedDict:
+        """交易信号计算函数"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def positions(self) -> List[Position]:
+        """持仓策略列表"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def freqs(self):
+        """K线周期列表"""
+        raise NotImplementedError
+
+    def init_bar_generator(self, bars: List[RawBar], **kwargs):
+        """使用策略定义初始化一个 BarGenerator 对象
+
+        :param bars: 基础周期K线
+        :param kwargs:
+            bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
+            sdt  初始化开始日期
+            n    初始化最小K线数量
+        :return:
+        """
+        bg: BarGenerator = kwargs.get('bg', None)
+        if bg is None:
+            sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
+            n = int(kwargs.get('n', 500))
+            bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
+
+            # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
+            bars_init = [x for x in bars if x.dt <= sdt]
+            if len(bars_init) > n:
+                bars1 = bars_init
+                bars2 = [x for x in bars if x.dt > sdt]
+            else:
+                bars1 = bars[:n]
+                bars2 = bars[n:]
+
+            for bar in bars1:
+                bg.update(bar)
+
+            return bg, bars2
+        else:
+            assert bg.base_freq == bars[-1].freq.value, "BarGenerator 的基础周期和 bars 的基础周期不一致"
+            bars2 = [x for x in bars if x.dt > bg.end_dt]
+            return bg, bars2
+
+    def init_trader(self, bars: List[RawBar], **kwargs) -> CzscTrader:
+        """使用策略定义初始化一个 CzscTrader 对象
+
+        **注意：** 这里会将所有持仓策略在 sdt 之后的交易信号计算出来并缓存在持仓策略实例内部，所以初始化的过程本身也是回测的过程。
+
+        :param bars: 基础周期K线
+        :param kwargs:
+            bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
+            sdt  初始化开始日期
+            n    初始化最小K线数量
+        :return: 完成策略初始化后的 CzscTrader 对象
+        """
+        bg, bars2 = self.init_bar_generator(bars, **kwargs)
+        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        for bar in bars2:
+            trader.on_bar(bar)
+        return trader
+
+    def backtest(self, bars: List[RawBar], **kwargs) -> CzscTrader:
+        trader = self.init_trader(bars, **kwargs)
+        return trader
+
+    def dummy(self, sigs: List[dict], **kwargs) -> CzscTrader:
+        """使用信号缓存进行策略回测
+
+        :param sigs: 信号缓存，一般指 generate_czsc_signals 函数计算的结果缓存
+        :return: 完成策略回测后的 CzscTrader 对象
+        """
+        trader = CzscTrader(positions=deepcopy(self.positions))
+        for sig in sigs:
+            trader.on_sig(sig)
+        return trader
+
+    def replay(self, bars: List[RawBar], res_path, **kwargs):
+        """交易策略交易过程回放
+
+        :param bars: 基础周期K线
+        :param res_path: 结果目录
+        :param kwargs:
+            bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
+            sdt  初始化开始日期
+            n    初始化最小K线数量
+        :return:
+        """
+        if kwargs.get('refresh', False):
+            shutil.rmtree(res_path, ignore_errors=True)
+
+        exist_ok = kwargs.get("exist_ok", False)
+        if os.path.exists(res_path) and not exist_ok:
+            logger.warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
+            return
+        os.makedirs(res_path, exist_ok=exist_ok)
+
+        bg, bars2 = self.init_bar_generator(bars, **kwargs)
+        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        for position in trader.positions:
+            pos_path = os.path.join(res_path, position.name)
+            os.makedirs(pos_path, exist_ok=exist_ok)
+
+        for bar in bars2:
+            trader.on_bar(bar)
+            for position in trader.positions:
+                pos_path = os.path.join(res_path, position.name)
+
+                if position.operates and position.operates[-1]['dt'] == bar.dt:
+                    op = position.operates[-1]
+                    _dt = op['dt'].strftime('%Y%m%d#%H%M')
+                    file_name = f"{op['op'].value}_{_dt}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+                    file_html = os.path.join(pos_path, file_name)
+                    trader.take_snapshot(file_html)
+                    logger.info(f'{file_html}')
+
+        file_trader = os.path.join(res_path, "trader.ct")
+        try:
+            dill_dump(trader, file_trader)
+            logger.info(f"交易对象保存到：{file_trader}")
+        except Exception as e:
+            logger.error(f"交易对象保存失败：{e}；通常的原因是交易对象中包含了不支持序列化的对象，比如函数")
+        return trader
+
+
+class CzscStrategyExample1(CzscStrategyBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def get_signals(cls, cat) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(signals.pos.get_s_long01(cat, th=100))
-        s.update(signals.pos.get_s_long02(cat, th=100))
-        s.update(signals.pos.get_s_long05(cat, span='月', th=500))
-
-        for _, c in cat.kas.items():
-            s.update(signals.bxt.get_s_d0_bi(c))
-            if c.freq in [Freq.F1]:
-                s.update(signals.other.get_s_zdt(c, di=1))
-                s.update(signals.other.get_s_op_time_span(c, op='开多', time_span=('13:00', '14:50')))
-                s.update(signals.other.get_s_op_time_span(c, op='平多', time_span=('09:35', '14:50')))
-            if c.freq in [Freq.F60, Freq.D, Freq.W]:
-                s.update(signals.ta.get_s_macd(c, di=1))
+        s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=2))
+        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=2))
         return s
 
-    # 定义多头持仓对象和交易事件
-    long_pos = PositionLong(symbol, hold_long_a=1, hold_long_b=1, hold_long_c=1,
-                            T0=T0, long_min_interval=min_interval)
+    @property
+    def positions(self):
+        return [
+            self.create_pos_a(),
+            self.create_pos_b(),
+            self.create_pos_c(),
+        ]
 
-    long_events = [
-        Event(name="开多", operate=Operate.LO, factors=[
-            Factor(name="低吸", signals_all=[
-                Signal("开多时间范围_13:00_14:50_是_任意_任意_0"),
-                Signal("1分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
-                Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
-                Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
-                Signal("15分钟_倒0笔_长度_5根K线以下_任意_任意_0"),
+    @property
+    def freqs(self):
+        return ['日线', '30分钟', '60分钟']
+
+    @property
+    def __shared_exits(self):
+        return [
+            Event(name='平多', operate=Operate.LE, factors=[
+                Factor(name="日线三笔向上收敛", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向上收敛_任意_任意_0"),
+                ])
             ]),
-        ]),
-
-        Event(name="平多", operate=Operate.LE, factors=[
-            Factor(name="持有资金", signals_all=[
-                Signal("平多时间范围_09:35_14:50_是_任意_任意_0"),
-                Signal("1分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
-            ], signals_not=[
-                Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
-                Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
+            Event(name='平空', operate=Operate.SE, factors=[
+                Factor(name="日线三笔向下收敛", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向下收敛_任意_任意_0"),
+                ])
             ]),
-        ]),
-    ]
+        ]
 
-    tactic = {
-        "base_freq": '1分钟',
-        "freqs": ['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'],
-        "get_signals": get_signals,
+    def create_pos_a(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="日线一买", signals_all=[
+                    Signal("日线_D1B_BUY1_一买_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="日线一卖", signals_all=[
+                    Signal("日线_D1B_BUY1_一卖_任意_任意_0"),
+                ])
+            ]),
+        ]
+        pos = Position(name="A", symbol=self.symbol, opens=opens, exits=self.__shared_exits,
+                       interval=0, timeout=20, stop_loss=100)
+        return pos
 
-        "long_pos": long_pos,
-        "long_events": long_events,
+    def create_pos_b(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="日线三笔向下无背", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向下无背_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="日线三笔向上无背", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向上无背_任意_任意_0"),
+                ])
+            ]),
+        ]
 
-        # 空头策略不进行定义，也就是不做空头交易
-        "short_pos": None,
-        "short_events": None,
-    }
+        pos = Position(name="B", symbol=self.symbol, opens=opens, exits=None, interval=0, timeout=20, stop_loss=100)
+        return pos
 
-    return tactic
+    def create_pos_c(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="日线一买", signals_all=[
+                    Signal("日线_D2B_BUY1_一买_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="日线一卖", signals_all=[
+                    Signal("日线_D2B_BUY1_一卖_任意_任意_0"),
+                ])
+            ]),
+        ]
+        pos = Position(name="C", symbol=self.symbol, opens=opens, exits=self.__shared_exits,
+                       interval=0, timeout=20, stop_loss=50)
+        return pos
 
 
-def trader_strategy_a(symbol):
-    """A股市场择时策略A"""
+class CzscStocksBeta(CzscStrategyBase):
+    """CZSC 股票 Beta 策略"""
 
-    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def get_signals(cls, cat) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(signals.pos.get_s_long01(cat, th=100))
-        s.update(signals.pos.get_s_long02(cat, th=100))
-        s.update(signals.pos.get_s_long05(cat, span='月', th=500))
-        for _, c in cat.kas.items():
-            if c.freq in [Freq.F15]:
-                s.update(signals.bxt.get_s_d0_bi(c))
-                s.update(signals.other.get_s_zdt(c, di=1))
-                s.update(signals.other.get_s_op_time_span(c, op='开多', time_span=('13:00', '14:50')))
-                s.update(signals.other.get_s_op_time_span(c, op='平多', time_span=('09:35', '14:50')))
+        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='全天', span=('0935', '1450')))
+        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='上午', span=('0935', '1130')))
+        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='下午', span=('1300', '1450')))
+        s.update(signals.bar_zdt_V221110(cat.kas['15分钟'], di=1))
 
-            if c.freq in [Freq.F60, Freq.D, Freq.W]:
-                s.update(signals.ta.get_s_macd(c, di=1))
+        s.update(signals.tas_macd_base_V221028(cat.kas['60分钟'], di=1, key='macd'))
+        s.update(signals.tas_macd_base_V221028(cat.kas['60分钟'], di=5, key='macd'))
+
+        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=1, ma_type='SMA', timeperiod=5))
+        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=2, ma_type='SMA', timeperiod=5))
+        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=5, ma_type='SMA', timeperiod=5))
         return s
 
-    # 定义多头持仓对象和交易事件
-    long_pos = PositionLong(symbol, hold_long_a=1, hold_long_b=1, hold_long_c=1,
-                            T0=False, long_min_interval=3600 * 4)
-    long_events = [
-        Event(name="开多", operate=Operate.LO, factors=[
-            Factor(name="低吸", signals_all=[
-                Signal("开多时间范围_13:00_14:50_是_任意_任意_0"),
-                Signal("15分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
-                Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
-                Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
-                Signal("15分钟_倒0笔_长度_5根K线以下_任意_任意_0"),
-            ]),
-        ]),
+    @property
+    def positions(self):
+        beta1 = self.create_beta1()
+        beta2 = self.create_beta2()
+        pos_list = [deepcopy(beta1), deepcopy(beta2)]
+        return pos_list
 
-        Event(name="平多", operate=Operate.LE, factors=[
-            Factor(name="持有资金", signals_all=[
-                Signal("平多时间范围_09:35_14:50_是_任意_任意_0"),
-                Signal("15分钟_倒1K_ZDT_非涨跌停_任意_任意_0"),
-            ], signals_not=[
-                Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
-                Signal("60分钟_倒1K_MACD多空_多头_任意_任意_0"),
-            ]),
-        ]),
-    ]
+    @property
+    def freqs(self):
+        return ['日线', '60分钟', '30分钟', '15分钟']
 
-    tactic = {
-        "base_freq": '15分钟',
-        "freqs": ['60分钟', '日线'],
-        "get_signals": get_signals,
+    def create_beta1(self):
+        """60分钟MACD金叉
 
-        "long_pos": long_pos,
-        "long_events": long_events,
+        **策略描述：**
 
-        # 空头策略不进行定义，也就是不做空头交易
-        "short_pos": None,
-        "short_events": None,
-    }
+        1. 60分钟MACD金叉开多
+        2. 60分钟MACD死叉平多
+        """
+        opens = [
+            {'name': '开多',
+             'operate': '开多',
+             'signals_all': [],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_ZDT_涨停_任意_任意_0'],
+             'factors': [{'name': '60分钟MACD金叉',
+                          'signals_all': ['全天_0935_1450_是_任意_任意_0',
+                                          '60分钟_D1K_MACD_多头_任意_任意_0',
+                                          '60分钟_D5K_MACD_空头_任意_任意_0'],
+                          'signals_any': [],
+                          'signals_not': []}
+                         ]},
+        ]
 
-    return tactic
+        exits = [
+            {'name': '平多',
+             'operate': '平多',
+             'signals_all': ['全天_0935_1450_是_任意_任意_0'],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_ZDT_跌停_任意_任意_0'],
+             'factors': [{'name': '60分钟MACD死叉',
+                          'signals_all': ['60分钟_D1K_MACD_空头_任意_任意_0'],
+                          'signals_any': [],
+                          'signals_not': []}]},
+
+        ]
+        pos = Position(name="60分钟MACD金叉", symbol=self.symbol,
+                       opens=[Event.load(x) for x in opens],
+                       exits=[Event.load(x) for x in exits],
+                       interval=3600 * 4, timeout=16 * 30, stop_loss=500)
+        return pos
+
+    def create_beta2(self):
+        """5日线多头
+        **策略特征：**
+        """
+        opens = [
+            {'name': '开多',
+             'operate': '开多',
+             'signals_all': [],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_ZDT_涨停_任意_任意_0'],
+             'factors': [{'name': '站上SMA5',
+                          'signals_all': ['上午_0935_1130_是_任意_任意_0',
+                                          '日线_D1K_SMA5_多头_任意_任意_0',
+                                          '日线_D5K_SMA5_空头_任意_任意_0'],
+                          'signals_any': [],
+                          'signals_not': []}]}
+        ]
+
+        exits = [
+            {'name': '平多',
+             'operate': '平多',
+             'signals_all': [],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_ZDT_跌停_任意_任意_0'],
+             'factors': [{'name': '跌破SMA5',
+                          'signals_all': ['下午_1300_1450_是_任意_任意_0',
+                                          '日线_D1K_SMA5_空头_任意_任意_0',
+                                          '日线_D2K_SMA5_多头_任意_任意_0'],
+                          'signals_any': [],
+                          'signals_not': []}]}
+        ]
+        pos = Position(name="5日线多头", symbol=self.symbol,
+                       opens=[Event.load(x) for x in opens],
+                       exits=[Event.load(x) for x in exits],
+                       interval=3600 * 4, timeout=16 * 40, stop_loss=500)
+        return pos
+
+class CzscStocksCustom(CzscStrategyBase):
+    """CZSC 股票 Custom 策略"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def get_signals(cls, cat) -> OrderedDict:
+        if cat.s:
+            dictMerge = cat.s.copy()
+        else:
+            dictMerge = OrderedDict()
+
+        for oneFreq in cat.kas.keys():
+            s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+            s.update(get_s_d0_bi(cat.kas[oneFreq]))
+            s.update(get_s_three_k(cat.kas[oneFreq], 1))
+            s.update(get_s_tingdun_k(cat.kas[oneFreq], 1))
+            # s.update(get_s_di_bi(cat.kas[oneFreq], 1))
+            s.update(get_s_macd(cat.kas[oneFreq], 1))
+            s.update(get_s_single_k(cat.kas[oneFreq], 1))
+            # 表里关系
+            # s.update(get_s_bi_status(cat.kas[oneFreq]))
+            # s.update(cxt_sub_b3_V221212(cat, "日线", "60分钟"))
+            # s.update(cxt_zhong_shu_gong_zhen_V221221(cat, "日线", "60分钟"))
+            if oneFreq == '日线' or oneFreq == '30分钟' or oneFreq == '周线' or oneFreq == '60分钟':
+                s.update(bar_reversal_V230227(cat.kas[oneFreq]))
+                s.update(bar_vol_bs1_V230224(cat.kas[oneFreq]))
+                s.update(tas_first_bs_V230217(cat.kas[oneFreq]))
+            if oneFreq == '日线':
+                s.update(cxt_vg_threeBuy(cat, "日线", "60分钟"))
+                s.update(cxt_vg_threeBuyConfirm(cat, "日线", "60分钟"))
+                s.update(cxt_vg_fakeOneBuy(cat, oneFreq))
+            if oneFreq == '日线' or oneFreq == '30分钟' or oneFreq == '周线' or oneFreq == '60分钟':
+                s.update(cxt_vg_oneBuy(cat, oneFreq))
+                s.update(cxt_vg_easyOneBuy(cat, oneFreq))
+                s.update(cxt_vg_fuzaOneBuy(cat, oneFreq))
+            # for di in range(1, 8):
+            #     s.update(get_s_three_bi(cat.kas[oneFreq], di))
+
+            # for di in range(1, 8):
+            #     s.update(get_s_base_xt(cat.kas[oneFreq], di))
+
+            for di in range(1, 8):
+                s.update(get_s_like_bs(cat.kas[oneFreq], di))
+
+            dictMerge.update(s)
+        return dictMerge
+
+    @property
+    def positions(self):
+        return []
+
+    @property
+    def freqs(self):
+        return ['日线', '60分钟', '30分钟', '周线']
 
 
+"""
 def trader_strategy_custom(symbol):
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
 
@@ -494,3 +779,4 @@ def trader_strategy_backtest3(symbol):
     }
 
     return tactic
+"""

@@ -22,9 +22,8 @@ from czsc.data.ts import get_kline
 import pandas as pd
 from czsc.enum import Freq
 from czsc.utils.bar_generator import BarGenerator
-from czsc.traders import CzscAdvancedTrader
-from czsc.traders import create_advanced_trader
-from czsc.strategies import trader_strategy_custom
+from czsc.traders import CzscSignals, CzscTrader
+from czsc.strategies import CzscStrategyBase, CzscStocksCustom
 import dill
 from multiprocessing import Process
 
@@ -43,29 +42,6 @@ allStocks = get_all_stocks()
 stockDf = pd.DataFrame(allStocks, columns=['ts_code', 'name'])
 
 allcodes = stockDf['ts_code'].values.tolist()
-# allStocksAfter = []
-# for oneCode in allcodes:
-#     allStocksAfter.append()
-# print(stockDf)
-
-events_monitor = [
-    Event(name="底分型停顿", operate=Operate.LO, factors=[
-        Factor(name="日线_底分型停顿", signals_all=[Signal("日线_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-        # Factor(name="30分钟_底分型停顿", signals_all=[Signal("30分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-        # Factor(name="15分钟_底分型停顿", signals_all=[Signal("15分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-        # Factor(name="5分钟_底分型停顿", signals_all=[Signal("5分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-        # Factor(name="60分钟_底分型停顿", signals_all=[Signal("60分钟_倒1K_四K形态_底分型_强势停顿_任意_0")]),
-    ]),
-
-    # Event(name="底分型强势", operate=Operate.LO, factors=[
-    #     Factor(name="日线_底分型强势", signals_all=[Signal("日线_倒1K_三K形态_底分型_强势_任意_0")]),
-    #     Factor(name="30分钟_底分型强势", signals_all=[Signal("30分钟_倒1K_三K形态_底分型_强势_任意_0")]),
-    #     Factor(name="15分钟_底分型强势", signals_all=[Signal("15分钟_倒1K_三K形态_底分型_强势_任意_0")]),
-    #     Factor(name="5分钟_底分型强势", signals_all=[Signal("5分钟_倒1K_三K形态_底分型_强势_任意_0")]),
-    #     Factor(name="60分钟_底分型强势", signals_all=[Signal("60分钟_倒1K_三K形态_底分型_强势_任意_0")]),
-    # ]),
-]
-
 
 def monitor(needCacheStocks, use_cache=True):
     # dingmessage("自选股因子监控启动 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")))
@@ -85,39 +61,17 @@ def monitor(needCacheStocks, use_cache=True):
         try:
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct) and use_cache:
-                ct: CzscAdvancedTrader = dill.load(open(file_ct, 'rb'))
-                ct.strategy = trader_strategy_custom
-                tactic = ct.strategy("") if trader_strategy_custom else {}
-                ct.get_signals: Callable = tactic.get('get_signals')
+                ct: CzscTrader = dill.load(open(file_ct, 'rb'))
+                ct.get_signals: Callable =CzscStocksCustom.get_signals
                 updateKline(ct)
             else:
                 kg = get_init_bg(s, datetime.now(), base_freq="1分钟",
                                  freqs=['30分钟', '60分钟', '日线', '周线'])
-                ct = create_advanced_trader(bg=kg, raw_bars=[], strategy=trader_strategy_custom)
+                ct = CzscTrader(bg=kg, get_signals=CzscStocksCustom.get_signals)
             dill.dump(ct, open(file_ct, 'wb'))
-            # continue
-            # 每次执行，会在moni_path下面保存一份快照
-            # file_html = os.path.join(moni_path, f"{ct.symbol}_{ct.end_dt.strftime('%Y%m%d%H%M')}.html")
-            # ct.take_snapshot(file_html, width="2000px", height="900px")
-
-            # msg = f"标的代码：{s}\n同花顺F10：http://basic.10jqka.com.cn/{s.split('.')[0]}\n"
-            msg = f"标的代码：{s}\n"
-            msg += f"标的名称：{stockDf.loc[stockDf['ts_code'] == s]['name'].values[0]}\n"
-            for event in events_monitor:
-                m, f = event.is_match(ct.s)
-                if m:
-                    daoZeroKey = "{}_倒0笔_长度".format(f.split("_")[0])
-                    msg += "监控提醒：{}@{} [{}]\n".format(event.name, f, ct.s[daoZeroKey])
-            print(msg)
-            # if "监控提醒" in msg:
-            #     dingmessage(msg.strip("\n"))
-
         except Exception as e:
             traceback.print_exc()
             print("{} 执行失败 - {}".format(s, e))
-
-    # dingmessage("自选股因子监控结束 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")))
-
 
 def get_init_bg(symbol: str,
                 end_dt: [str, datetime],
@@ -126,13 +80,6 @@ def get_init_bg(symbol: str,
                 max_count=1000,
                 adjust='qfq'):
     """获取 symbol 的初始化 bar generator"""
-    # if isinstance(end_dt, str):
-    #     end_dt = pd.to_datetime(end_dt, utc=True)
-    #     end_dt = end_dt.tz_convert('dateutil/PRC')
-    #     # 时区转换之后，要减去8个小时才是设置的时间
-    #     end_dt = end_dt - timedelta(hours=8)
-    # else:
-    #     assert end_dt.tzinfo._filename == 'PRC'
     last_day = (end_dt - timedelta(days=1)).replace(hour=16, minute=0)
 
     bg = BarGenerator(base_freq, freqs, max_count)
@@ -185,7 +132,7 @@ def get_init_bg(symbol: str,
     return bg
 
 
-def updateKline(trader: CzscAdvancedTrader):
+def updateKline(trader: CzscSignals):
     bars = get_kline(ts_code=trader.symbol, start_date=trader.end_dt, end_date=datetime.now(), freq=Freq.F1, fq=None)
     data = [x for x in bars if x.dt > trader.end_dt]
 

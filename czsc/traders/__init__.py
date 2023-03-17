@@ -3,12 +3,11 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/11/1 22:20
-describe: 交易员（traders）的主要职能是依据感应系统（sensors）的输出来调整仓位，以此应对变幻无常的市场风险。
+describe: 交易员（traders）
 """
-from czsc.traders.base import CzscSignals, CzscAdvancedTrader
-from czsc.traders.advanced import create_advanced_trader, CzscDummyTrader
-from czsc.traders.performance import TradersPerformance, PairsPerformance
-from czsc.traders.ts_simulator import TradeSimulator
-from czsc.traders.utils import trader_fast_backtest, trade_replay
+from czsc.traders.base import CzscSignals, CzscTrader, generate_czsc_signals, check_signals_acc
+from czsc.traders.performance import (
+    PairsPerformance, combine_holds_and_pairs, combine_dates_and_pairs, stock_holds_performance
+)
 
 

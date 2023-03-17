@@ -62,3 +62,30 @@ def test_spread_sheets():
     app.remove(token, kind='sheet')
 
 
+def test_im():
+    from czsc.fsa.im import IM
+
+    app = IM(app_id=os.environ['app_id'], app_secret=os.environ['app_secret'])
+    # 使用手机号获取用户id
+    # id = app.get_user_id({"mobiles": ["XXXX"]})['data']['user_list'][0]['user_id']
+    receive_id = "ou_6fa04b5b4d853e9fdc87d267e8f2a270"
+
+    image_key = app.upload_im_image(r"C:\Users\zengb\Downloads\十阶众生相.jpg")
+    payload = {"receive_id": receive_id, "content": {"image_key": image_key}, "msg_type": "image"}
+    print(app.send(payload))
+
+    payload = {"receive_id": receive_id, "content": {"text": "自定义文字随便发"}, "msg_type": "text"}
+    print(app.send(payload))
+
+    file_key = app.upload_im_file(r"C:\Users\zengb\Downloads\放量破年线.py")
+    payload = {"receive_id": receive_id, "content": {"file_key": file_key}, "msg_type": "file"}
+    print(app.send(payload))
+
+    file_key = app.upload_im_file(r"C:\Users\zengb\Downloads\Think Python 2ed 中译版精校.pdf", file_type='pdf')
+    payload = {"receive_id": receive_id, "content": {"file_key": file_key}, "msg_type": "file"}
+    app.send(payload)
+
+    app.send_text("快捷接口发送自定义文字", receive_id)
+    app.send_image(r"C:\Users\zengb\Downloads\十阶众生相.jpg", receive_id)
+    app.send_file(r"C:\Users\zengb\Downloads\Think Python 2ed 中译版精校.pdf", receive_id)
+

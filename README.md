@@ -8,6 +8,7 @@
 [![Documentation Status](https://readthedocs.org/projects/czsc/badge/?version=latest)](https://czsc.readthedocs.io/en/latest/?badge=latest)
 
 **[API文档](https://czsc.readthedocs.io/en/latest/modules.html)**
+**[CZSC项目文档](https://s0cqcxuy3p.feishu.cn/wiki/wikcn3gB1MKl3ClpLnboHM1QgKf)**
 
 >源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，原始博客中的内容不太完整，且没有评论，以下是网友整理的原文备份
 * 备份网址1：https://chzhshch.blog
@@ -15,28 +16,13 @@
 
 >**假如没有了分型、笔、线段，缠论还是缠论吗？如果你的答案是“是”，这个项目是为你准备的。本项目旨在提供一个符合缠中说禅思维方式的程序化交易工具。**
 
->如果这个项目对你的交易有些许帮助，可以加微信 `zengbin93` 进行捐赠，感谢！请备注 **【CZSC捐赠】**
-
-```
-主题: CZSC0.8.26 版本介绍 
-日期: 2022-05-22 19:53:55
-录制文件：https://meeting.tencent.com/v2/cloud-record/share?id=a361ce70-45e7-4499-b577-681e1dc01401&from=3
-访问密码：xy4a
-```
-
-```
-主题: 信号计算函数的一些编写案例介绍
-日期: 2022-07-03 19:55:37
-录制文件：https://meeting.tencent.com/v2/cloud-record/share?id=dbfa7717-d63c-47dd-a5b6-b7b07afd58f5&from=3
-访问密码：mHZA
-```
 
 ## 项目贡献
 
 * 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
 * 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
-* 定义并实现了若干种基于笔的信号，详见 `czsc/signals.py`
-* 缠论多级别联立决策分析交易，详见 `czsc/traders/advanced.py`
+* 定义并实现了若干信号函数，详见 `czsc/signals`
+* 缠论多级别联立决策分析交易，详见 `CzscTrader`
 * 基于 Tushare 数据的择时、选股策略回测研究流程
 
 
@@ -46,7 +32,7 @@
 
 直接从github安装：
 ```
-pip install git+git://github.com/zengbin93/czsc.git -U
+pip install git@github.com:waditu/czsc.git -U
 ```
 
 从`pypi`安装：
@@ -105,14 +91,13 @@ pip install czsc -U -i https://pypi.python.org/simple
 * 提取码：vhue
 
 
-## [知识星球【CZSC小圈子】](https://t.zsxq.com/04B2jmUN7)
+## [知识星球【CZSC小圈子】](https://t.zsxq.com/04B2jmUN7)费用：100元
 
-**适合人群：**
-1. 至少完成一个以上czsc库信号函数编写，目标是缠论量化交易
-2. 至少读完一遍禅师的博客
-
-**圈子服务：**
-1. 缠中说禅博客原文研读交流
-2. CZSC程序化交易库信号函数编写指导
-
-> 申请加入前请先加微信 `zengbin93`，备注【CZSC小圈子】
+**知识星球【CZSC小圈子】的定位是什么？**
+  - 为仔细研读过禅师原文并且愿意使用 CZSC 库进行量化投研的朋友提供一个交流平台。
+  - 寻找一群有能力的朋友共同进行量化策略研究。
+  - 促成策略逻辑互补的实盘组合构建。
+  - 对于刚接触缠论和量化交易的新朋友，给出一些力所能及的帮助。
+> 详情点击：https://s0cqcxuy3p.feishu.cn/wiki/wikcnwXSk9mWnki1b6URPhLA2Hc
+> 
+> 加入知识星球有人工审核。**申请加入请求提交后**，加微信 `zengbin93`，备注【CZSC小圈子】

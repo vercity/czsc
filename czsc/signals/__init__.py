@@ -8,10 +8,10 @@ describe: 信号系统，注意：这里仅仅只是提供一些写信号的例�
 
 from . import bxt
 from . import ta
-from . import other
+# from . import other
 from . import vol
-from . import cat
-from . import pos
+# from . import cat
+# from . import pos
 
 # ======================================================================================================================
 # 以下是 0.9.1 开始的新标准下实现的信号函数，规范定义：
@@ -26,15 +26,23 @@ from czsc.signals.cxt import (
     cxt_bi_break_V221126,
     cxt_sub_b3_V221212,
     cxt_zhong_shu_gong_zhen_V221221,
+    cxt_bi_end_V230222,
+    cxt_bi_end_V230224,
+    cxt_bi_base_V230228,
 )
 
 
 from czsc.signals.byi import (
-    byi_symmetry_zs_V2211007,
+    byi_symmetry_zs_V221107,
 )
 
 from czsc.signals.coo import (
     coo_td_V221110,
+)
+
+from czsc.signals.vol import (
+    vol_single_ma_V230214,
+    vol_double_ma_V230214,
 )
 
 from czsc.signals.bar import (
@@ -50,6 +58,13 @@ from czsc.signals.bar import (
     bar_accelerate_V221110,
     bar_accelerate_V221118,
     bar_fang_liang_break_V221216,
+    bar_fake_break_V230204,
+    bar_single_V230214,
+    bar_amount_acc_V230214,
+    bar_big_solid_V230215,
+    bar_vol_bs1_V230224,
+    bar_reversal_V230227,
+    bar_bpm_V230227,
 )
 
 from czsc.signals.jcc import (
@@ -80,6 +95,11 @@ from czsc.signals.jcc import (
 
 from czsc.signals.tas import (
     update_macd_cache,
+    update_ma_cache,
+    update_kdj_cache,
+    update_boll_cache,
+    update_rsi_cache,
+
     tas_macd_base_V221028,
     tas_macd_change_V221105,
     tas_macd_direct_V221106,
@@ -90,21 +110,26 @@ from czsc.signals.tas import (
     tas_macd_first_bs_V221216,
     tas_macd_second_bs_V221201,
 
-    update_ma_cache,
     tas_ma_base_V221101,
     tas_ma_base_V221203,
     tas_ma_round_V221206,
     tas_double_ma_V221203,
 
-    update_boll_cache,
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
 
-    update_kdj_cache,
     tas_kdj_base_V221101,
+    tas_kdj_evc_V221201,
 
-    update_rsi_cache,
     tas_double_rsi_V221203,
+    tas_rsi_base_V230227,
+
+    tas_first_bs_V230217,
+    tas_second_bs_V230228,
+    tas_second_bs_V230303,
+
+    tas_hlma_V230301,
+    tas_hlma_V230304,
 )
 
 

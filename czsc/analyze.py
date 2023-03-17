@@ -100,10 +100,10 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
     return fxs
 
 
-def check_bi(bars: List[NewBar]):
+def check_bi(bars: List[NewBar], benchmark: float = None):
     """输入一串无包含关系K线，查找其中的一笔
-
     :param bars: 无包含关系K线列表
+    :param benchmark: 当下笔能量的比较基准
     :return:
     """
     min_bi_len = envs.get_min_bi_len()
@@ -146,7 +146,15 @@ def check_bi(bars: List[NewBar]):
     # 判断fx_a和fx_b价格区间是否存在包含关系
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) \
                  or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
-    if len(bars_a) >= min_bi_len and not ab_include:
+
+    # 判断当前笔的涨跌幅是否超过benchmark的一定比例
+    if benchmark and abs(fx_a.fx - fx_b.fx) > benchmark * envs.get_bi_change_th():
+        power_enough = True
+    else:
+        power_enough = False
+
+    # 成笔的条件：1）顶底分型之间没有包含关系；2）笔长度大于等于min_bi_len 或 当前笔的涨跌幅已经够大
+    if (not ab_include) and (len(bars_a) >= min_bi_len or power_enough):
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, direction=direction, bars=bars_a)
 
@@ -159,7 +167,6 @@ def check_bi(bars: List[NewBar]):
             return bi, bars_b
     else:
         return None, bars
-
 
 class CZSC:
     def __init__(self,
@@ -182,6 +189,8 @@ class CZSC:
         self.freq = bars[0].freq
         self.get_signals = get_signals
         self.signals = None
+        # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
+        self.cache = OrderedDict()
 
         for bar in bars:
             self.update(bar)
@@ -196,7 +205,7 @@ class CZSC:
 
         # 查找笔
         if not self.bi_list:
-            # 第一个笔的查找
+            # 第一笔的查找
             fxs = check_fxs(bars_ubi)
             if not fxs:
                 return
@@ -209,29 +218,32 @@ class CZSC:
                     fx_a = fx
             bars_ubi = [x for x in bars_ubi if x.dt >= fx_a.elements[0].dt]
 
-            bi, bars_ubi_ = check_bi(bars_ubi)
+            bi, bars_ubi_ = check_bi(bars_ubi, None)
             if isinstance(bi, BI):
                 self.bi_list.append(bi)
             self.bars_ubi = bars_ubi_
             return
 
-        last_bi = self.bi_list[-1]
+        if self.verbose and len(bars_ubi) > 100:
+            logger.info(f"{self.symbol} - {self.freq} - {bars_ubi[-1].dt} 未完成笔延伸数量: {len(bars_ubi)}")
 
-        # 如果上一笔被破坏，将上一笔的bars与bars_ubi进行合并
-        if (last_bi.direction == Direction.Up and bars_ubi[-1].high > last_bi.high) \
-                or (last_bi.direction == Direction.Down and bars_ubi[-1].low < last_bi.low):
-            bars_ubi_a = last_bi.bars[:-1] + [x for x in bars_ubi if x.dt >= last_bi.bars[-1].dt]
-            self.bi_list.pop(-1)
+        if envs.get_bi_change_th() > 0.5 and len(self.bi_list) >= 5:
+            benchmark = min(self.bi_list[-1].power_price, np.mean([x.power_price for x in self.bi_list[-5:]]))
         else:
-            bars_ubi_a = bars_ubi
+            benchmark = None
 
-        if self.verbose and len(bars_ubi_a) > 100:
-            logger.info(f"czsc_update_bi: {self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸数量: {len(bars_ubi_a)}")
-
-        bi, bars_ubi_ = check_bi(bars_ubi_a)
+        bi, bars_ubi_ = check_bi(bars_ubi, benchmark)
         self.bars_ubi = bars_ubi_
         if isinstance(bi, BI):
             self.bi_list.append(bi)
+
+        # 后处理：如果当前笔被破坏，将当前笔的bars与bars_ubi进行合并，并丢弃
+        last_bi = self.bi_list[-1]
+        bars_ubi = self.bars_ubi
+        if (last_bi.direction == Direction.Up and bars_ubi[-1].high > last_bi.high) \
+                or (last_bi.direction == Direction.Down and bars_ubi[-1].low < last_bi.low):
+            self.bars_ubi = last_bi.bars[:-1] + [x for x in bars_ubi if x.dt >= last_bi.bars[-1].dt]
+            self.bi_list.pop(-1)
 
     def update(self, bar: RawBar):
         """更新分析结果
@@ -246,7 +258,7 @@ class CZSC:
             # 当前 bar 是上一根 bar 的时间延伸
             self.bars_raw[-1] = bar
             if len(self.bars_ubi) >= 3:
-                edt = self.bars_ubi[1].dt
+                edt = self.bars_ubi[-2].dt
                 self.bars_ubi = [x for x in self.bars_ubi if x.dt <= edt]
                 last_bars = [x for x in self.bars_raw[-50:] if x.dt > edt]
             else:
@@ -272,6 +284,8 @@ class CZSC:
 
         # 更新笔
         self.__update_bi()
+
+        # 根据最大笔数量限制完成 bi_list, bars_raw 序列的数量控制
         self.bi_list = self.bi_list[-self.max_bi_num:]
         if self.bi_list:
             sdt = self.bi_list[0].fx_a.elements[0].dt
@@ -282,6 +296,7 @@ class CZSC:
                     break
             self.bars_raw = self.bars_raw[s_index:]
 
+        # 如果有信号计算函数，则进行信号计算
         if self.get_signals:
             self.signals = self.get_signals(c=self)
         else:
@@ -359,6 +374,6 @@ class CZSC:
             fxs.extend(bi_.fxs[1:])
         ubi = self.ubi_fxs
         for x in ubi:
-            if x.dt > fxs[-1].dt:
+            if not fxs or x.dt > fxs[-1].dt:
                 fxs.append(x)
         return fxs

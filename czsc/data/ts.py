@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import List
 from functools import partial
 from loguru import logger
-
+from tenacity import retry, stop_after_attempt, wait_random
 from czsc.objects import RawBar, Freq
 
 
@@ -42,6 +42,7 @@ class TushareProApi:
         self.__token = token
         self.__timeout = timeout
 
+    @retry(stop=stop_after_attempt(10), wait=wait_random(1, 5))
     def query(self, api_name, fields='', **kwargs):
         if api_name in ['__getstate__', '__setstate__']:
             return pd.DataFrame()
@@ -73,9 +74,9 @@ class TushareProApi:
 
 try:
     pro = ts.pro_api()
-    # ts.set_token("a6d79c0088c6d2bb619fa9dfbdf72287800d1689f2f33653bd938995")
-    # from tushare.util import upass
-    # pro = TushareProApi(upass.get_token(), timeout=60)
+    ts.set_token("29c2bab9582049c09714905f6422e5b6b13a0234f7e55e5c0fc3d867")
+    from tushare.util import upass
+    pro = TushareProApi(upass.get_token(), timeout=60)
 except:
     print("Tushare Pro 初始化失败")
 
