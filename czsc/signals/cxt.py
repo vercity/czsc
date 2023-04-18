@@ -10,10 +10,12 @@ from loguru import logger
 from typing import List
 from czsc import CZSC
 from czsc.traders.base import CzscSignals
-from czsc.objects import FX, BI, Direction, ZS, Mark,FakeBI, Signal
+from czsc.objects import FX, BI, Direction, ZS, Mark, FakeBI, Signal
 from czsc.utils import get_sub_elements, create_single_signal, is_bis_up, is_bis_down
+from czsc.utils.sig import get_zs_seq
 from collections import OrderedDict
-import  copy
+import copy
+from ..utils.ta1 import MACD, SMA
 
 from czsc.utils.sig import get_zs_seq
 
@@ -51,7 +53,7 @@ def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
+def cxt_fx_power_V221107(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     """倒数第di个分型的强弱
 
     **信号列表：**
@@ -80,7 +82,7 @@ def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """一买信号
 
     **信号列表：**
@@ -148,7 +150,7 @@ def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """一卖信号
 
     **信号列表：**
@@ -222,7 +224,7 @@ def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_bi_break_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """向上笔突破回调不破信号
 
     **信号列表：**
@@ -277,7 +279,7 @@ def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', th=10) -> OrderedDict:
+def cxt_sub_b3_V221212(cat: CzscSignals, freq1='60分钟', freq2='15分钟', th=10, **kwargs) -> OrderedDict:
     """小级别突破大级别中枢形成三买，贡献者：魏永超
 
     **信号逻辑：**
@@ -290,15 +292,15 @@ def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', t
     - Signal('60分钟_15分钟_3买回踩10_确认_任意_任意_0')
 
     :param cat:
-    :param freq: 中枢所在的大级别
-    :param sub_freq: 突破大级别中枢，回踩形成小级别类3买的小级别
+    :param freq1: 中枢所在的大级别
+    :param freq2: 突破大级别中枢，回踩形成小级别类3买的小级别
     :param th: 小级别回落对大级别中枢区间的回踩程度，0表示回踩不进大级别中枢，10表示回踩不超过中枢区间的10%
     :return: 信号识别结果
     """
-    k1, k2, k3 = f"{freq}_{sub_freq}_三买回踩{th}".split('_')
+    k1, k2, k3 = f"{freq1}_{freq2}_三买回踩{th}".split('_')
 
-    c: CZSC = cat.kas[freq]
-    sub_c: CZSC = cat.kas[sub_freq]
+    c: CZSC = cat.kas[freq1]
+    sub_c: CZSC = cat.kas[freq2]
 
     v1 = "其他"
     if len(c.bi_list) > 13 and len(sub_c.bi_list) > 10:
@@ -370,7 +372,8 @@ def cxt_vg_customgongzhen(cat: CzscSignals, freq='60分钟', sub_freq='15分钟'
     s[signal.key] = signal.value
     return s
 
-def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟') -> OrderedDict:
+
+def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟', **kwargs) -> OrderedDict:
     """大小级别中枢共振，类二买共振；贡献者：琅盎
 
     **信号逻辑：**
@@ -531,6 +534,113 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
         v1 = '看多'
     else:
         v1 = '其他'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_third_buy_V230228(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """笔三买辅助
+
+    **信号逻辑：**
+
+    1. 定义大于前一个向上笔的高点的笔为向上突破笔，最近所有向上突破笔有价格重叠
+    2. 当下笔的最低点在任一向上突破笔的高点上，且当下笔的最低点离笔序列最低点的距离不超过向上突破笔列表均值的1.618倍
+
+    **信号列表：**
+
+    - Signal('15分钟_D1三买辅助_V230228_三买_14笔_任意_0')
+    - Signal('15分钟_D1三买辅助_V230228_三买_10笔_任意_0')
+    - Signal('15分钟_D1三买辅助_V230228_三买_6笔_任意_0')
+    - Signal('15分钟_D1三买辅助_V230228_三买_8笔_任意_0')
+    - Signal('15分钟_D1三买辅助_V230228_三买_12笔_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几笔
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}三买辅助_V230228".split('_')
+    v1, v2 = '其他', '其他'
+    if len(c.bi_list) < di + 11:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+    def check_third_buy(bis):
+        """检查 bis 是否是三买的结束
+
+        :param bis: 笔序列，按时间升序
+        :return:
+        """
+        res = {"match": False, "v1": "三买", "v2": f"{len(bis)}笔", 'v3': "任意"}
+        if bis[-1].direction == Direction.Up or bis[0].direction == bis[-1].direction:
+            return res
+
+        # 检查三买：获取向上突破的笔列表
+        key_bis = []
+        for i in range(0, len(bis) - 2, 2):
+            if i == 0:
+                key_bis.append(bis[i])
+            else:
+                b1, _, b3 = bis[i - 2:i + 1]
+                if b3.high > b1.high:
+                    key_bis.append(b3)
+        if len(key_bis) < 2:
+            return res
+
+        tb_break = bis[-1].low > min([x.high for x in key_bis]) > max([x.low for x in key_bis])
+        tb_price = bis[-1].low < min([x.low for x in bis]) + 1.618 * np.mean([x.power_price for x in key_bis])
+
+        if tb_break and tb_price:
+            res['match'] = True
+        return res
+
+    for n in (13, 11, 9, 7, 5):
+        _bis = get_sub_elements(c.bi_list, di=di, n=n + 1)
+        if len(_bis) != n + 1:
+            continue
+
+        _res = check_third_buy(_bis)
+        if _res['match']:
+            v1 = _res['v1']
+            v2 = _res['v2']
+            break
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
+    """两个中枢组合辅助判断BS1
+
+    **信号逻辑：**
+
+    1. 最后一笔向下，最近两个中枢依次向下，最后一个中枢的倒数第一笔的K线长度大于倒数第二笔的K线长度，看多；
+    2. 最后一笔向上，最近两个中枢依次向上，最后一个中枢的倒数第一笔的K线长度大于倒数第二笔的K线长度，看空；
+
+    **信号列表：**
+
+    - Signal('15分钟_D1双中枢_BS1辅助V230311_看多_任意_任意_0')
+    - Signal('15分钟_D1双中枢_BS1辅助V230311_看空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第 di 笔
+    :return: s
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}双中枢_BS1辅助V230311".split("_")
+    v1 = "其他"
+
+    bis: List[BI] = get_sub_elements(c.bi_list, di=di, n=20)
+    zss = get_zs_seq(bis)
+
+    if len(zss) >= 2 and len(zss[-2].bis) >= 2 and len(zss[-1].bis) >= 2:
+        zs1, zs2 = zss[-2], zss[-1]
+
+        ts1 = len(zs2.bis[-1].bars)
+        ts2 = len(zs2.bis[-2].bars)
+
+        if bis[-1].direction == Direction.Down and ts1 >= ts2 * 2 and zs1.gg > zs2.gg:
+            v1 = "看多"
+
+        if bis[-1].direction == Direction.Up and ts1 >= ts2 * 2 and zs1.dd < zs2.dd:
+            v1 = "看空"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1106,8 +1216,6 @@ class BXT:
         return self.is_BS3(self.bis)
 
 
-
-
 def cxt_vg_threeBuy(cat: CzscSignals, freq='日线', sub_freq='30分钟', th=38.2) -> OrderedDict:
     # 默认最后3笔的长度是40天
     k1, k2, k3 = f"{freq}_{sub_freq}_vg三买".split('_')
@@ -1168,28 +1276,42 @@ def cxt_vg_threeBuyConfirm(cat: CzscSignals, freq='日线', sub_freq='30分钟',
     v3 = "0"
     score = 0
     # 最后一笔方向向下
-    if len(c.bi_list) > 7 and (c.bi_list[-1].direction == Direction.Down):
-        continueJudgeSub = False
-        # 倒7至倒5形成中枢
-        last_bi = c.bi_list[-1]
-        zs = ZS(symbol=cat.symbol, bis=c.bi_list[-7:-4])
-        zs2 = ZS(symbol=cat.symbol, bis=c.bi_list[-3:])
-        # 倒数第一笔最低比中枢最高点高
-        biCount = sum([x.length for x in c.bi_list[-7:-4]])
-        if zs2.dd > zs.gg and zs2.gg == c.bi_list[-3].high:
-            for i in range(7, c.bi_list.__len__())[::-1]:
-                thisB = c.bi_list[i]
-                if thisB.high >= zs2.dd:
-                    break
-                if thisB.low < zs.dd * 0.9:
-                    break
-                # 加上这一笔的长度
-                biCount = biCount + thisB.length
-            v1 = "确认"
-            v2 = str((c.bi_list[-4].high - min(c.bi_list[-2].low, c.bi_list[-1].low)) / (
-                    c.bi_list[-4].high - c.bi_list[-4].low))
-            v3 = str(c.bi_list[-1].length + c.bi_list[-2].length + c.bi_list[-3].length) + "_" + str(biCount)
-            score = (c.bi_list[-4].high - c.bi_list[-4].low) / c.bi_list[-4].low
+    if len(c.bi_list) > 7 and (c.bi_list[-1].direction == Direction.Down) and (
+            c.bi_list[-1].low > c.bi_list[-3].low > c.bi_list[5].high) and (c.bi_list[-3].high > c.bi_list[-1].high):
+        #判断均线
+        shouldContinue = True
+        close = np.array([x.close for x in c.bars_raw[-70:]])
+        for n in [5, 10, 20, 30, 60]:
+            sma = SMA(close, timeperiod=n)
+            if close[-1] < sma[-1]:
+                shouldContinue = False
+
+        if shouldContinue:
+            # 倒7至倒5形成中枢
+            last_bi = c.bi_list[-1]
+            zs = ZS(symbol=cat.symbol, bis=c.bi_list[-7:-4])
+            zs2 = ZS(symbol=cat.symbol, bis=c.bi_list[-3:])
+            # 倒数第一笔最低比中枢最高点高
+            biCount = sum([x.length for x in c.bi_list[-7:-4]])
+            if zs2.dd > zs.gg:
+                index = 0
+                for thisB in reversed(c.bi_list[0:-7]):
+                    if thisB.high > last_bi.low:
+                        break
+                    if index % 2 == 0:
+                        if thisB.low > zs.zg:
+                            break
+                    else:
+                        if thisB.high < zs.zd:
+                            break
+                    # 加上这一笔的长度
+                    biCount = biCount + thisB.length
+                    index += 1
+                v1 = "确认"
+                v2 = str((c.bi_list[-4].high - min(c.bi_list[-2].low, c.bi_list[-1].low)) / (
+                        c.bi_list[-4].high - c.bi_list[-4].low))
+                v3 = str(c.bi_list[-1].length + c.bi_list[-2].length + c.bi_list[-3].length) + "_" + str(biCount)
+                score = (c.bi_list[-4].high - c.bi_list[-4].low) / c.bi_list[-4].low
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3, score=score)
@@ -1254,13 +1376,14 @@ def cxt_vg_oneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
                 zs2 = ZS(symbol=c.symbol, bis=zs2Bis[0:3])
                 if isValidZS(zs1Bis, zs1) and isValidZS(zs2Bis, zs2):
                     v1 = "确认"
-                    v2 = f"{str(len(zs1Bis))}-{str(len(zs2Bis))}"  #第一个中枢多少笔-第二个中枢多少笔
+                    v2 = f"{str(len(zs1Bis))}-{str(len(zs2Bis))}"  # 第一个中枢多少笔-第二个中枢多少笔
                     # ss = 1+len(zs2Bis)+1
-                    v3 = f"{calculateBiListPossible[-(1+len(zs2Bis)+1)].power}-{calculateBiListPossible[-1].power}" #第一个中枢过渡笔力度-第二个中枢过渡笔力度
+                    v3 = f"{calculateBiListPossible[-(1 + len(zs2Bis) + 1)].power}-{calculateBiListPossible[-1].power}"  # 第一个中枢过渡笔力度-第二个中枢过渡笔力度
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3, score=score)
     s[signal.key] = signal.value
     return s
+
 
 def cxt_vg_fakeOneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
     def isValidZS(bis, zs) -> bool:
@@ -1291,7 +1414,8 @@ def cxt_vg_fakeOneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
 
     tmp_list = copy.deepcopy(c.bi_list)
     fake_bi = FakeBI(symbol=c.symbol, sdt=c.bars_ubi[1].dt, edt=c.bars_ubi[-1].dt, direction=Direction.Down,
-                     high=c.bars_ubi[1].high, low=c.bars_ubi[-1].low, power=round(c.bars_ubi[1].high - c.bars_ubi[-1].low, 2))
+                     high=c.bars_ubi[1].high, low=c.bars_ubi[-1].low,
+                     power=round(c.bars_ubi[1].high - c.bars_ubi[-1].low, 2))
     tmp_list.append(fake_bi)
 
     if (biCount % 2) == 0:
@@ -1324,13 +1448,14 @@ def cxt_vg_fakeOneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
                 zs2 = ZS(symbol=c.symbol, bis=zs2Bis[0:3])
                 if isValidZS(zs1Bis, zs1) and isValidZS(zs2Bis, zs2):
                     v1 = "确认"
-                    v2 = f"{str(len(zs1Bis))}-{str(len(zs2Bis))}"  #第一个中枢多少笔-第二个中枢多少笔
+                    v2 = f"{str(len(zs1Bis))}-{str(len(zs2Bis))}"  # 第一个中枢多少笔-第二个中枢多少笔
                     # ss = 1+len(zs2Bis)+1
-                    v3 = f"{calculateBiListPossible[-(1+len(zs2Bis)+1)].power}-{calculateBiListPossible[-1].power}" #第一个中枢过渡笔力度-第二个中枢过渡笔力度
+                    v3 = f"{calculateBiListPossible[-(1 + len(zs2Bis) + 1)].power}-{calculateBiListPossible[-1].power}"  # 第一个中枢过渡笔力度-第二个中枢过渡笔力度
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3, score=score)
     s[signal.key] = signal.value
     return s
+
 
 def cxt_vg_easyOneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
     c: CZSC = cat.kas[freq]
@@ -1348,7 +1473,7 @@ def cxt_vg_easyOneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
         s[defaultSignal.key] = defaultSignal.value
         return s
 
-    #最后一笔方向向下
+    # 最后一笔方向向下
     if len(c.bi_list) > 3 and (c.bi_list[-1].direction == Direction.Down):
         continueJudgeSub = False
         # 倒5至倒3形成中枢
@@ -1381,6 +1506,7 @@ def cxt_vg_easyOneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
     s[signal.key] = signal.value
     return s
 
+
 def cxt_vg_fuzaOneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
     c: CZSC = cat.kas[freq]
     k1, k2, k3 = f"{freq}_任意_vg复杂一买".split('_')
@@ -1397,7 +1523,7 @@ def cxt_vg_fuzaOneBuy(cat: CzscSignals, freq='日线') -> OrderedDict:
         s[defaultSignal.key] = defaultSignal.value
         return s
 
-    #最后一笔方向向下
+    # 最后一笔方向向下
     if len(c.bi_list) > 3 and (c.bi_list[-1].direction == Direction.Down):
         continueJudgeSub = False
         # 倒5至倒3形成中枢

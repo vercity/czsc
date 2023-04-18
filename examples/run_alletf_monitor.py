@@ -37,25 +37,25 @@ allcodes = stockDf['ts_code'].values.tolist()
 # print(stockDf)
 
 events_monitor = [
-    Event(name="日线GG三买", operate=Operate.LO, factors=[
-        Factor(name="日线_类三买", signals_all=[
-            Signal("日线_倒1K_MACD方向_向上_任意_任意_0"),
-        ], signals_any=[
-            Signal("日线_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"),
-            Signal("日线_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
-            Signal("日线_倒1笔_类买卖点_类三买_13笔GG三买_任意_0"),
-        ]),
-    ]),
-    
-    Event(name="周线GG三买", operate=Operate.LO, factors=[
-        Factor(name="周线_类三买", signals_all=[
-            Signal("周线_倒1K_MACD方向_向上_任意_任意_0"),
-        ], signals_any=[
-            Signal("周线_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"),
-            Signal("周线_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
-            Signal("周线_倒1笔_类买卖点_类三买_13笔GG三买_任意_0"),
-        ]),
-    ]),
+    # Event(name="日线GG三买", operate=Operate.LO, factors=[
+    #     Factor(name="日线_类三买", signals_all=[
+    #         Signal("日线_倒1K_MACD方向_向上_任意_任意_0"),
+    #     ], signals_any=[
+    #         Signal("日线_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"),
+    #         Signal("日线_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
+    #         Signal("日线_倒1笔_类买卖点_类三买_13笔GG三买_任意_0"),
+    #     ]),
+    # ]),
+    #
+    # Event(name="周线GG三买", operate=Operate.LO, factors=[
+    #     Factor(name="周线_类三买", signals_all=[
+    #         Signal("周线_倒1K_MACD方向_向上_任意_任意_0"),
+    #     ], signals_any=[
+    #         Signal("周线_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"),
+    #         Signal("周线_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
+    #         Signal("周线_倒1笔_类买卖点_类三买_13笔GG三买_任意_0"),
+    #     ]),
+    # ]),
     # # 五笔aAb式
     # Event(name="五笔aAb式买", operate=Operate.LO, factors=[
     #     Factor(name="日线_aAb式买", signals_all=[Signal("日线_倒1笔_基础形态_底背驰_五笔aAb式_任意_0")]),
@@ -140,14 +140,14 @@ events_monitor = [
     # ]),
     #
     # 九笔类一买 （2~4构成中枢A，6~8构成中枢B，9背驰）
-    Event(name="九笔aAbBc式类一买", operate=Operate.LO, factors=[
-        Factor(name="日线_类一买", signals_all=[Signal("日线_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("日线_倒1K_DIF回抽_0轴_任意_任意_0"),
-                                           Signal("日线_倒1K_MACD方向_向上_任意_任意_0")]),
-        Factor(name="30分钟_类一买", signals_all=[Signal("30分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("30分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
-                                           Signal("30分钟_倒1K_MACD方向_向上_任意_任意_0")]),
-        Factor(name="周线_类一买", signals_all=[Signal("周线_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("周线_倒1K_DIF回抽_0轴_任意_任意_0"),
-                                           Signal("周线_倒1K_MACD方向_向上_任意_任意_0")]),
-    ]),
+    # Event(name="九笔aAbBc式类一买", operate=Operate.LO, factors=[
+    #     Factor(name="日线_类一买", signals_all=[Signal("日线_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("日线_倒1K_DIF回抽_0轴_任意_任意_0"),
+    #                                        Signal("日线_倒1K_MACD方向_向上_任意_任意_0")]),
+    #     Factor(name="30分钟_类一买", signals_all=[Signal("30分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("30分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
+    #                                        Signal("30分钟_倒1K_MACD方向_向上_任意_任意_0")]),
+    #     Factor(name="周线_类一买", signals_all=[Signal("周线_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("周线_倒1K_DIF回抽_0轴_任意_任意_0"),
+    #                                        Signal("周线_倒1K_MACD方向_向上_任意_任意_0")]),
+    # ]),
     #
     # # 九笔类三买 （1357构成中枢，最低点在3或5）（357构成中枢，8的力度小于2，9回调不跌破GG构成三买）
     # Event(name="九笔GG三买", operate=Operate.LO, factors=[
@@ -393,19 +393,21 @@ def monitor(use_cache=True):
                         if f == "日线_vg简单一买反转":
                             dingmessage("【抄底】\n" + "6成胜率\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg简单一买反转TAS":
-                            dingmessage("【抄底】\n" + "6.5成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                            dingmessage("【抄底】\n" + "6.5成胜率\n" +  msg.strip("\n"), shouldAt=True,
                                         webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg一买反转orTAS":
-                            dingmessage("【抄底】\n" + "7成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                            dingmessage("【抄底】\n" + "7成胜率\n" +  msg.strip("\n"), shouldAt=True,
                                         webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg一买反转andTAS":
-                            dingmessage("【抄底】\n" + "必买！！！！！！！\n必买！！！！！！！\n必买！！！！！！！\n8成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                            dingmessage("【抄底】\n" + "必买！！！！！！！\n必买！！！！！！！\n必买！！！！！！！\n8成胜率\n" +  msg.strip("\n"), shouldAt=True,
                                         webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg一买":
                             confirm, zhongshu, bipower,score = ct.s[f].split("_")
                             bi1power, bi2power = bipower.split("-")
                             if float(bi1power) > float(bi2power):
                                 dingmessage("【抄底】\n" + msg.strip("\n"))
+                        elif f == "日线_60分钟_vg三买确认":
+                            dingmessage("【追涨】\n" + msg.strip("\n"))
                         elif f == "日线_60分钟_vg三买":
                             confirm, huitiao, dao0length, zhendanglength, dao1power = ct.s[f].split("_")
                             if float(huitiao) < 0.35 and int(dao0length) < 10 and int(zhendanglength) > 39 and float(dao1power) < 1:

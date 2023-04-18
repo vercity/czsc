@@ -51,9 +51,9 @@ allcodes = stockDf['ts_code'].values.tolist()
 events_monitor = [
 
     # # 九笔类一买 （2~4构成中枢A，6~8构成中枢B，9背驰）
-    Event(name="九笔aAbBc式类一买", operate=Operate.LO, factors=[
-        Factor(name="日线_类一买", signals_all=[Signal("日线_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("日线_倒1K_DIF回抽_0轴_任意_任意_0"),
-                                           Signal("日线_倒1K_MACD方向_向上_任意_任意_0")]),
+    # Event(name="九笔aAbBc式类一买", operate=Operate.LO, factors=[
+    #     Factor(name="日线_类一买", signals_all=[Signal("日线_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("日线_倒1K_DIF回抽_0轴_任意_任意_0"),
+    #                                        Signal("日线_倒1K_MACD方向_向上_任意_任意_0")]),
         # Factor(name="30分钟_类一买", signals_all=[Signal("30分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("30分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
         #                                    Signal("30分钟_倒1K_MACD方向_向上_任意_任意_0")]),
         # Factor(name="15分钟_类一买", signals_all=[Signal("15分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("15分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
@@ -62,38 +62,36 @@ events_monitor = [
         #                                    Signal("5分钟_倒1K_MACD方向_向上_任意_任意_0")]),
         # Factor(name="60分钟_类一买", signals_all=[Signal("60分钟_倒1笔_类买卖点_类一买_九笔aAbBc式_任意_0"), Signal("60分钟_倒1K_DIF回抽_0轴_任意_任意_0"),
         #                                    Signal("60分钟_倒1K_MACD方向_向上_任意_任意_0")]),
-    ]),
+    # ]),
 
-    Event(name="GG三买", operate=Operate.LO, factors=[
-            Factor(name="日线_类三买", signals_all=[
-                Signal("日线_倒1K_MACD方向_向上_任意_任意_0"),
-            ], signals_any=[
-                Signal("日线_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"),
-                Signal("日线_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
-                Signal("日线_倒1笔_类买卖点_类三买_13笔GG三买_任意_0"),
-            ]),
-        ]),
-
-    Event(name="vg三买", operate=Operate.LO, factors=[
-        Factor(name="日线_60分钟_vg三买", signals_all=[Signal("日线_60分钟_vg三买_确认_任意_任意_0")]),
-    ]),
-
-    Event(name="vg三买确认", operate=Operate.LO, factors=[
-        Factor(name="日线_60分钟_vg三买确认", signals_all=[Signal("日线_60分钟_vg三买确认_确认_任意_任意_0")]),
-    ]),
-
-    Event(name="vg一买", operate=Operate.LO, factors=[
-        Factor(name="日线_vg一买", signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0")]),
-        Factor(name="30分钟_vg一买", signals_all=[Signal("30分钟_vg一买_任意_确认_任意_任意_0")]),
-        Factor(name="60分钟_vg一买", signals_all=[Signal("60分钟_vg一买_任意_确认_任意_任意_0")]),
-        Factor(name="周线_vg一买", signals_all=[Signal("周线_vg一买_任意_确认_任意_任意_0")]),
-    ]),
+    # Event(name="GG三买", operate=Operate.LO, factors=[
+    #         Factor(name="日线_类三买", signals_all=[
+    #             Signal("日线_倒1K_MACD方向_向上_任意_任意_0"),
+    #         ], signals_any=[
+    #             Signal("日线_倒1笔_类买卖点_类三买_九笔GG三买_任意_0"),
+    #             Signal("日线_倒1笔_类买卖点_类三买_11笔GG三买_任意_0"),
+    #             Signal("日线_倒1笔_类买卖点_类三买_13笔GG三买_任意_0"),
+    #         ]),
+    #     ]),
 
     Event(name="vg潜在一买", operate=Operate.LO, factors=[
         Factor(name="日线_vg潜在一买", signals_all=[Signal("日线_vg潜在一买_任意_确认_任意_任意_0")]),
         # Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
         # Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
         # Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="vg复杂一买反转", operate=Operate.LO, factors=[
+        Factor(name="日线_vg复杂一买反转",
+               signals_all=[Signal("日线_vg复杂一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
+        Factor(name="周线_vg复杂一买反转",
+               signals_all=[Signal("周线_vg复杂一买_任意_确认_任意_任意_0"), Signal("周线_D1A300_反转V230227_看多_任意_任意_0")]),
+        Factor(name="60分钟_vg复杂一买反转",
+               signals_all=[Signal("60分钟_vg复杂一买_任意_确认_任意_任意_0"), Signal("60分钟_D1A300_反转V230227_看多_任意_任意_0")]),
+    ]),
+
+    Event(name="vg三买确认", operate=Operate.LO, factors=[
+        Factor(name="日线_60分钟_vg三买确认", signals_all=[Signal("日线_60分钟_vg三买确认_确认_任意_任意_0")]),
     ]),
 
     Event(name="反转迹象", operate=Operate.LO, factors=[
@@ -117,41 +115,6 @@ events_monitor = [
         Factor(name="周线_TAS一买", signals_all=[Signal("周线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
     ]),
 
-    Event(name="vg简单一买", operate=Operate.LO, factors=[
-        Factor(name="日线_vg简单一买", signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0")]),
-        Factor(name="30分钟_vg简单一买", signals_all=[Signal("30分钟_vg简单一买_任意_确认_任意_任意_0")]),
-        Factor(name="60分钟_vg简单一买", signals_all=[Signal("60分钟_vg简单一买_任意_确认_任意_任意_0")]),
-        Factor(name="周线_vg简单一买", signals_all=[Signal("周线_vg简单一买_任意_确认_任意_任意_0")]),
-    ]),
-
-    Event(name="vg一买反转orTAS", operate=Operate.LO, factors=[
-        Factor(name="日线_vg一买反转orTAS", signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0")], signals_any=[Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0"),
-                                                                                                  Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
-    ]),
-
-    Event(name="vg一买反转andTAS", operate=Operate.LO, factors=[
-        Factor(name="日线_vg一买反转andTAS", signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0"),Signal("日线_D1A300_反转V230227_看多_任意_任意_0"),
-                                                    Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
-    ]),
-
-    Event(name="vg简单一买反转", operate=Operate.LO, factors=[
-        Factor(name="日线_vg简单一买反转", signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
-    ]),
-
-    Event(name="vg简单一买反转TAS", operate=Operate.LO, factors=[
-        Factor(name="日线_vg简单一买反转TAS", signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0"),
-                                                   Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
-    ]),
-
-    Event(name="vg复杂一买反转", operate=Operate.LO, factors=[
-        Factor(name="日线_vg复杂一买反转",
-               signals_all=[Signal("日线_vg复杂一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
-        Factor(name="周线_vg复杂一买反转",
-               signals_all=[Signal("周线_vg复杂一买_任意_确认_任意_任意_0"), Signal("周线_D1A300_反转V230227_看多_任意_任意_0")]),
-        Factor(name="60分钟_vg复杂一买反转",
-               signals_all=[Signal("60分钟_vg复杂一买_任意_确认_任意_任意_0"), Signal("60分钟_D1A300_反转V230227_看多_任意_任意_0")]),
-    ]),
-
     Event(name="vg复杂一买多中枢", operate=Operate.LO, factors=[
         Factor(name="日线_vg复杂一买多中枢",signals_all=[],
                signals_any=[Signal("日线_vg复杂一买_任意_确认_2_任意_0"), Signal("日线_vg复杂一买_任意_确认_3_任意_0")]),
@@ -159,6 +122,40 @@ events_monitor = [
                signals_any=[Signal("周线_vg复杂一买_任意_确认_2_任意_0"), Signal("周线_vg复杂一买_任意_确认_3_任意_0")]),
         Factor(name="60分钟_vg复杂一买2中枢",signals_all=[],
                signals_any=[Signal("60分钟_vg复杂一买_任意_确认_2_任意_0"), Signal("60分钟_vg复杂一买_任意_确认_3_任意_0")]),
+    ]),
+
+    Event(name="vg一买反转orTAS", operate=Operate.LO, factors=[
+        Factor(name="日线_vg一买反转orTAS", signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0")],
+               signals_any=[Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0"),
+                            Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
+    ]),
+
+    Event(name="vg一买反转andTAS", operate=Operate.LO, factors=[
+        Factor(name="日线_vg一买反转andTAS",
+               signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0"),
+                            Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+    ]),
+
+    Event(name="vg简单一买反转TAS", operate=Operate.LO, factors=[
+        Factor(name="日线_vg简单一买反转TAS",
+               signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0"),
+                            Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+    ]),
+
+    Event(name="vg简单一买反转", operate=Operate.LO, factors=[
+        Factor(name="日线_vg简单一买反转",
+               signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
+    ]),
+
+    Event(name="vg三买", operate=Operate.LO, factors=[
+        Factor(name="日线_60分钟_vg三买", signals_all=[Signal("日线_60分钟_vg三买_确认_任意_任意_0")]),
+    ]),
+
+    Event(name="vg一买", operate=Operate.LO, factors=[
+        Factor(name="日线_vg一买", signals_all=[Signal("日线_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="30分钟_vg一买", signals_all=[Signal("30分钟_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="60分钟_vg一买", signals_all=[Signal("60分钟_vg一买_任意_确认_任意_任意_0")]),
+        Factor(name="周线_vg一买", signals_all=[Signal("周线_vg一买_任意_确认_任意_任意_0")]),
     ]),
 ]
 
@@ -215,23 +212,26 @@ def monitor(use_cache=True):
 
                     if "3根K线" in ct.s[daoZeroKey]:
                         if f == "日线_vg复杂一买反转":
+                            msg += ct.s["日线_vg复杂一买"] + "\n"
                             dingmessage("【抄底】\n" + "看下参数\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg简单一买反转":
                             dingmessage("【抄底】\n" + "6成胜率\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg简单一买反转TAS":
-                            dingmessage("【抄底】\n" + "6.5成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                            dingmessage("【抄底】\n" + "6.5成胜率\n" +  msg.strip("\n"), shouldAt=True,
                                         webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg一买反转orTAS":
-                            dingmessage("【抄底】\n" + "7成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                            dingmessage("【抄底】\n" + "7成胜率\n" +  msg.strip("\n"), shouldAt=True,
                                         webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg一买反转andTAS":
-                            dingmessage("【抄底】\n" + "必买！！！！！！！\n必买！！！！！！！\n必买！！！！！！！\n8成胜率\n" +  + msg.strip("\n"), shouldAt=True,
+                            dingmessage("【抄底】\n" + "必买！！！！！！！\n必买！！！！！！！\n必买！！！！！！！\n8成胜率\n" +  msg.strip("\n"), shouldAt=True,
                                         webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg一买":
                             confirm, zhongshu, bipower,score = ct.s[f].split("_")
                             bi1power, bi2power = bipower.split("-")
                             if float(bi1power) > float(bi2power):
                                 dingmessage("【抄底】\n" + msg.strip("\n"))
+                        elif f == "日线_60分钟_vg三买确认":
+                            dingmessage("【追涨】\n" + msg.strip("\n"))
                         elif f == "日线_60分钟_vg三买":
                             confirm, huitiao, dao0length, zhendanglength, dao1power = ct.s[f].split("_")
                             tmpThreeBuyResult = threeBuyResult.copy(deep=True)
@@ -272,7 +272,7 @@ def monitor(use_cache=True):
                                 tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] >= 100]
 
                             isLikeOK = False
-                            if float(huitiao) < 0.35 and int(dao0length) < 9 and int(zhendanglength) > 80 and float(
+                            if float(huitiao) < 0.35 and int(dao0length) < 9 and int(zhendanglength) > 60 and float(
                                     dao1power) < 1 and float(dao1power) > 0.5:
                                 isLikeOK = True
 

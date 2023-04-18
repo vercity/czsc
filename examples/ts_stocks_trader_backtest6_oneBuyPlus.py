@@ -105,7 +105,20 @@ class CzscStocksCustomBacktest(CzscStrategyBase):
     def freqs(self):
         return ['日线']
 
-isBackTestResult = False
+isBackTestResult = True
+# fffff = pd.read_csv( os.path.join(os.path.join(strategyFolderPath, "finalResult") + '.csv'))
+# ssss  =fffff['trade_date'].value_counts()
+# ssssss=ssss.sort_index()
+# ssssss.drop("2020-02-05", axis=0, inplace=True)
+# ssssss.drop("2022-04-29", axis=0, inplace=True)
+# ssssss.drop("2018-02-08", axis=0, inplace=True)
+# ssssss.drop("2018-10-15", axis=0, inplace=True)
+# ssssss.drop("2018-10-22", axis=0, inplace=True)
+# import numpy as np
+# import matplotlib.pyplot as plt
+# plt.plot(ssssss, label='Rice', c='C7')
+# plt.legend()
+# plt.show()
 # ssss = np.load(os.path.join(strategyFolderPath, "btStock") + '.npy', allow_pickle=True).item()
 btStock = {}
 
@@ -209,6 +222,11 @@ def backtest(stocks):
 
         if isBackTestResult:
             # 筛选
+            # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['日期'] == '20200205')]
+            # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['日期'] == '20220429')]
+            # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['日期'] == '20220428')]
+            # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['日期'] == '20181015')]
+            # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['日期'] == '20180208')]
             # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['3K形态'] == '底分型强势')]
             # resultDataFrame = resultDataFrame.loc[resultDataFrame['3K形态'] == '底分型强势']
             # resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '下跌']

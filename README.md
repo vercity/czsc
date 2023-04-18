@@ -19,11 +19,13 @@
 
 ## 项目贡献
 
+* [择时策略研究框架](https://s0cqcxuy3p.feishu.cn/wiki/wikcnhizrtIOQakwVcZLMKJNaib)
 * 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
 * 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
 * 定义并实现了若干信号函数，详见 `czsc/signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
 * 基于 Tushare 数据的择时、选股策略回测研究流程
+
 
 
 ## 安装使用
@@ -64,13 +66,9 @@ pip install czsc -U -i https://pypi.python.org/simple
 >案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，备注：**CZSC用户**，1500元可以开通CZSC项目目前用到的全部数据权限。
 >掘金终端主要用于交易策略的实盘跟踪，[点击了解](https://www.myquant.cn/)。
 
-* `examples/ts_fast_backtest.py` 股票市场择时策略快速回测
 * `examples/ts_plates_sensor.py` 同花顺概念板块轮动策略回测
 * `examples/ts_check_signal_acc.py` 验证信号计算的准确性，信号是否符合定义
 * `examples/ts_stocks_sensors.py` 日线选股策略回测
-* `examples/gm_backtest.py` 使用掘金终端进行缠论策略回测
-* `examples/gm_realtime.py` 使用掘金终端进行策略实盘、仿真
-* `examples/gm_check_point.py` 使用掘金终端的数据进行买卖点验证
 
 
 ## 原文整理

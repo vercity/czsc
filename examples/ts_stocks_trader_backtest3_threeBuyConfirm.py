@@ -8,15 +8,17 @@ import os
 import sys
 import math
 
+from czsc.custombacktest.backtest_adcanced_filters import advanced_filter_result
+from czsc.signals import bar_vol_bs1_V230224, bar_reversal_V230227, tas_first_bs_V230217
+
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
 import pandas as pd
 from czsc.data.ts_cache import TsDataCache
-from czsc import CZSC, Freq
+from czsc import CZSC, Freq, CzscStrategyBase
 from czsc.utils import BarGenerator
-from czsc.strategies import trader_strategy_backtest3
-from czsc.traders.base import CzscSignals, CzscAdvancedTrader
+from czsc.traders.base import CzscSignals, CzscTrader
 from czsc.objects import Signal, Factor, Event, Operate
 from czsc.data.ts import get_kline, freq_cn_map, dt_fmt, date_fmt, get_all_stocks
 from czsc.utils.dingding import dingmessage
@@ -68,17 +70,21 @@ dikaiNextDay = 0
 n1bResult = []
 n3bResult = []
 n5bResult = []
+n8bResult = []
 n21bResult = []
 
+class CzscStocksCustomBacktest(CzscStrategyBase):
+    """CZSC 股票 Custom 策略"""
 
-def trader_strategy_backtestThis(symbol):
-    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
+    @classmethod
+    def get_signals(cls, cat) -> OrderedDict:
         if cat.s:
             dictMerge = cat.s.copy()
         else:
             dictMerge = OrderedDict()
-
         for oneFreq in cat.kas.keys():
             s = OrderedDict({"symbol": cat.kas[oneFreq].symbol, "dt": cat.kas[oneFreq].bars_raw[-1].dt,
                              "close": cat.kas[oneFreq].bars_raw[-1].close})
@@ -92,21 +98,13 @@ def trader_strategy_backtestThis(symbol):
 
         return dictMerge
 
-    tactic = {
-        "base_freq": '日线',
-        "freqs": ['日线'],
-        "get_signals": get_signals,
-        "signals_n": 0,
+    @property
+    def positions(self):
+        return []
 
-        "long_pos": None,
-        "long_events": None,
-
-        # 空头策略不进行定义，也就是不做空头交易
-        "short_pos": None,
-        "short_events": None,
-    }
-
-    return tactic
+    @property
+    def freqs(self):
+        return ['日线']
 
 
 isBackTestResult = True
@@ -133,7 +131,10 @@ def calculateOtherSignals(c):
                 signal = "顶分型强势"
         elif tri[0].high > tri[1].high > tri[2].high:
             signal = "向下走"
-    return {"3K形态" : signal}
+        return {"3K形态": signal,
+                "BS1辅助": bar_vol_bs1_V230224(c.kas['日线'])["日线_D1N20量价_BS1辅助"].split("_")[0],
+                "反转迹象": bar_reversal_V230227(c.kas['日线'])["日线_D1A300_反转V230227"].split("_")[0],
+                "TAS一买": tas_first_bs_V230217(c.kas['日线'])["日线_D1N10SMA5_BS1辅助"].split("_")[0]}
 
 def backtest(stocks):
     global dikaiNextDay, gaokaiNextDay
@@ -143,7 +144,8 @@ def backtest(stocks):
     for oneStock in stocks:
         if oneStock.endswith('BJ'):
             continue
-
+        if oneStock == '002655.SZ':
+            continue
         resultDataFrame = pd.DataFrame(columns=["日期", "标的", "3K形态", "倒1K状态", "回调幅度", "最后三笔天数", "震荡时间", "上攻涨幅"])
         print(oneStock)
 
@@ -174,7 +176,7 @@ def backtest(stocks):
                 bg.init_freq_bars('日线', barMin)
                 # for bar in barMin:
                 #     bg.update(bar)
-                trader = CzscAdvancedTrader(bg, trader_strategy_backtestThis)
+                trader = CzscTrader(bg=bg, get_signals=CzscStocksCustomBacktest.get_signals)
                 print(trader.s['dt'])
                 kCount = trader.s['日线_倒0笔_长度']
                 # zhongshugongzhenSignal = trader.s['日线_60分钟_中枢共振']
@@ -204,12 +206,14 @@ def backtest(stocks):
         if isBackTestResult:
             # 筛选
             # resultDataFrame = resultDataFrame.loc[~(resultDataFrame['3K形态'] == '底分型强势')]
-            # resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '下跌']
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.3]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['倒1K状态'] == '上涨']
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.35]
             resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
+            # resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] > 0.5]
             resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 40]
             # resultDataFrame = resultDataFrame.loc[resultDataFrame['最后三笔天数'] < 30]
             kaicangPrice = 0
+            # resultDataFrame = advanced_filter_result(resultDataFrame, oneStock)
             for oneDay in resultDataFrame['日期'].values.tolist():
                 if oneDay in btStock.keys():
                     stockList = btStock[oneDay]
@@ -266,6 +270,8 @@ def backtest(stocks):
                 # 计算在出信号后第二天开盘价买入，5天后的开盘价收益(%)
                 hold5Day = currentDay["n5b"].iloc[0] / 100
                 n5bResult.append(hold5Day)
+                hold8Day = currentDay["n8b"].iloc[0] / 100
+                n8bResult.append(hold8Day)
                 # 计算在出信号后第二天开盘价买入，21天后的开盘价收益(%)
                 hold21Day = currentDay["n21b"].iloc[0] / 100
                 n21bResult.append(hold21Day)
@@ -273,10 +279,13 @@ def backtest(stocks):
         # 统计汇总
         print("总共交易 {} 次".format(gaokaiNextDay + dikaiNextDay))
         print("高开占比 {}".format(gaokaiNextDay / (gaokaiNextDay + dikaiNextDay)))
-        print("1天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n1bResult)), str(np.median(n1bResult))))
-        print("3天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n3bResult)), str(np.median([x for x in n3bResult if math.isnan(x) == False]))))
-        print("5天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n5bResult)), str(np.median([x for x in n5bResult if math.isnan(x) == False]))))
-        print("21天就卖，平均赚 {}，中位数{}".format(str(np.nanmean(n21bResult)), str(np.median([x for x in n21bResult if math.isnan(x) == False]))))
+        print("1天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n1bResult)), str(np.median(n1bResult)), str(len( [i for i in n1bResult if i >=0])/len(n1bResult))))
+        print("3天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n3bResult)), str(np.median([x for x in n3bResult if math.isnan(x) == False])), str(len( [i for i in n3bResult if i >=0])/len(n3bResult))))
+        print("5天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n5bResult)), str(np.median([x for x in n5bResult if math.isnan(x) == False])), str(len( [i for i in n5bResult if i >=0])/len(n5bResult))))
+        print("8天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n8bResult)),
+                                                str(np.median([x for x in n8bResult if math.isnan(x) == False])),
+                                                str(len([i for i in n8bResult if i >= 0]) / len(n8bResult))))
+        print("21天就卖，平均赚 {}，中位数{},  胜率{}".format(str(np.nanmean(n21bResult)), str(np.median([x for x in n21bResult if math.isnan(x) == False])), str(len( [i for i in n21bResult if i >=0])/len(n21bResult))))
 
         tf = open(os.path.join(strategyFolderPath, "btStock") + '.json', "w")
         json.dump(btStock, tf)

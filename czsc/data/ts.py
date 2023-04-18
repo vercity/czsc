@@ -4,6 +4,7 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/6/25 18:52
 """
+import os
 import time
 import json
 import requests
@@ -20,6 +21,8 @@ from czsc.objects import RawBar, Freq
 
 # 数据频度 ：支持分钟(min)/日(D)/周(W)/月(M)K线，其中1min表示1分钟（类推1/5/15/30/60分钟）。
 # 对于分钟数据有600积分用户可以试用（请求2次），正式权限请在QQ群私信群主或积分管理员。
+from czsc.utils.io import read_pkl
+
 freq_map = {Freq.F1: "1min", Freq.F5: '5min', Freq.F15: "15min", Freq.F30: '30min',
             Freq.F60: "60min", Freq.D: 'D', Freq.W: "W", Freq.M: "M"}
 freq_cn_map = {"1分钟": Freq.F1, "5分钟": Freq.F5, "15分钟": Freq.F15, "30分钟": Freq.F30,
@@ -74,7 +77,6 @@ class TushareProApi:
 
 try:
     pro = ts.pro_api()
-    ts.set_token("29c2bab9582049c09714905f6422e5b6b13a0234f7e55e5c0fc3d867")
     from tushare.util import upass
     pro = TushareProApi(upass.get_token(), timeout=60)
 except:
@@ -197,3 +199,9 @@ def get_all_stocks():
 
 def get_all_etfs():
     return pro.fund_basic(market='E', status='L')
+
+def get_all_plates():
+    ct_path = "/Users/guyeqi/Documents/Python/data/realtime/platesdata"
+    cachedMembers = read_pkl(os.path.join(ct_path, "members"))
+
+    return cachedMembers

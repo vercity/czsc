@@ -428,8 +428,8 @@ class CzscStocksCustom(CzscStrategyBase):
             # for di in range(1, 8):
             #     s.update(get_s_base_xt(cat.kas[oneFreq], di))
 
-            for di in range(1, 8):
-                s.update(get_s_like_bs(cat.kas[oneFreq], di))
+            # for di in range(1, 8):
+            #     s.update(get_s_like_bs(cat.kas[oneFreq], di))
 
             dictMerge.update(s)
         return dictMerge

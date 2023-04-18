@@ -8,10 +8,11 @@ import os
 import sys
 import math
 
+from czsc.custombacktest.backtest_adcanced_filters import advanced_filter_result
 from czsc.signals import bar_vol_bs1_V230224, bar_reversal_V230227, tas_first_bs_V230217
 
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
+sys.path.insert(0, '../../examples')
+sys.path.insert(0, '../..')
 
 import pandas as pd
 from czsc.data.ts_cache import TsDataCache
@@ -209,7 +210,7 @@ def backtest(stocks):
             resultDataFrame = resultDataFrame.loc[resultDataFrame['回调幅度'] < 0.35]
             resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] > 0.5]
             resultDataFrame = resultDataFrame.loc[resultDataFrame['上攻涨幅'] < 1]
-            resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 80]
+            resultDataFrame = resultDataFrame.loc[resultDataFrame['震荡时间'] > 60]
             resultDataFrame = resultDataFrame.loc[resultDataFrame['最后一笔天数'] < 9]
             # if 'TAS一买' in resultDataFrame:
             #     resultDataFrame = resultDataFrame.loc[resultDataFrame['TAS一买'] == '一买']
@@ -218,6 +219,7 @@ def backtest(stocks):
             # if '反转迹象' in resultDataFrame:
             #     resultDataFrame = resultDataFrame.loc[resultDataFrame['反转迹象'] == '看多']
             kaicangPrice = 0
+            resultDataFrame = advanced_filter_result(resultDataFrame, oneStock)
             for oneDay in resultDataFrame['日期'].values.tolist():
                 if oneDay in btStock.keys():
                     stockList = btStock[oneDay]
