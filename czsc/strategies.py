@@ -417,10 +417,10 @@ class CzscStocksCustom(CzscStrategyBase):
             if oneFreq == '日线':
                 s.update(cxt_vg_threeBuy(cat, "日线", "60分钟"))
                 s.update(cxt_vg_threeBuyConfirm(cat, "日线", "60分钟"))
-                s.update(cxt_vg_fakeOneBuy(cat, oneFreq))
+                # s.update(cxt_vg_fakeOneBuy(cat, oneFreq))
             if oneFreq == '日线' or oneFreq == '30分钟' or oneFreq == '周线' or oneFreq == '60分钟':
                 s.update(cxt_vg_oneBuy(cat, oneFreq))
-                s.update(cxt_vg_easyOneBuy(cat, oneFreq))
+                # s.update(cxt_vg_easyOneBuy(cat, oneFreq))
                 s.update(cxt_vg_fuzaOneBuy(cat, oneFreq))
             # for di in range(1, 8):
             #     s.update(get_s_three_bi(cat.kas[oneFreq], di))

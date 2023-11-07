@@ -10,6 +10,9 @@ import traceback
 import time
 import shutil
 import os
+import sys
+
+sys.path.append("/Users/guyeqi/Documents/Python/czsc")
 from datetime import datetime, timedelta
 
 from czsc.data import TsDataCache
@@ -20,7 +23,7 @@ from czsc.utils.qywx import push_text, push_file
 from czsc.utils.io import read_pkl, save_pkl
 import requests
 import json
-from czsc.data.ts import get_kline,pro
+from czsc.data.ts import get_kline, pro
 import pandas as pd
 from czsc.enum import Freq
 from czsc.utils.bar_generator import BarGenerator
@@ -40,8 +43,9 @@ os.makedirs(ct_path, exist_ok=True)
 
 conceptsDic = {}
 alls = get_all_stocks()
-relations =pd.read_csv(os.path.join(ct_path, "relations"), index_col=0)
+relations = pd.read_csv(os.path.join(ct_path, "relations"), index_col=0)
 cachedMembers = read_pkl(os.path.join(ct_path, "members"))
+
 
 # def refreshConcepts(toPath):
 #     concepts = pro.ths_index(exchange="A", type="N")
@@ -53,7 +57,9 @@ cachedMembers = read_pkl(os.path.join(ct_path, "members"))
 #     concepts = concepts.loc[~(concepts['ts_code'] == '883302.TI')]
 #     concepts = concepts.loc[~(concepts['ts_code'] == '883303.TI')]
 #     concepts = concepts.loc[~(concepts['ts_code'] == '883304.TI')]
+#     concepts = concepts.loc[~(concepts['ts_code'] == '864035.TI')]
 #     concepts = concepts.loc[~(concepts['ts_code'] == '864038.TI')]
+#     concepts = concepts.loc[~(concepts['ts_code'] == '885841.TI')]
 #     #gpt数据有问题
 #     concepts = concepts.loc[~(concepts['ts_code'] == '864036.TI')]
 #     for index, row in concepts.iterrows():
@@ -77,44 +83,77 @@ cachedMembers = read_pkl(os.path.join(ct_path, "members"))
 # #刷新接口
 # refreshConcepts(os.path.join(ct_path, "members"))
 
-#添加关系
-# allConceptNames = []
-# for oneConcept in  cachedMembers["N"].values():
-#     if  "DRG/DIP" in oneConcept["name"]:
-#         print("")
-#     allConceptNames.append(oneConcept["name"])
-# df1 = pd.DataFrame(0, columns=alls['name'].values.tolist(), index=allConceptNames)
-# for oneConcept in  cachedMembers["N"].values():
-#     if "stocks" in oneConcept.keys():
-#         conceptName = oneConcept["name"]
-#         for oneStock in oneConcept["stocks"].values():
-#             df1.loc[conceptName, oneStock] = 1
-# df1.to_csv(os.path.join(ct_path, "relations"), index=True)
+# 添加关系
+allConceptNames = []
+for oneConcept in  cachedMembers["N"].values():
+    if  "DRG/DIP" in oneConcept["name"]:
+        print("")
+    allConceptNames.append(oneConcept["name"])
+df1 = pd.DataFrame(0, columns=alls['name'].values.tolist(), index=allConceptNames)
+for oneConcept in  cachedMembers["N"].values():
+    if "stocks" in oneConcept.keys():
+        conceptName = oneConcept["name"]
+        for oneStock in oneConcept["stocks"].values():
+            df1.loc[conceptName, oneStock] = 1
+df1.to_csv(os.path.join(ct_path, "relations"), index=True)
 
-def getPlatesRankDf(smas=[1,3,5,10,20]):
+#过去lasyDays板块强度统计
+def getRankTable(lastDays=5):
+    trade_cal =  pro.trade_cal(exchange='', start_date='19900101', end_date="20300101")
+    trade_cal = trade_cal[trade_cal.is_open == 1]
+    now =  datetime.now().strftime("%Y%m%d")
+    trade_cal = trade_cal[trade_cal.cal_date < now]
+    trade_dates = trade_cal.cal_date.to_list()
+    cachedDatas = {}
+    allcodes = list(allPlatesInfo['N'].keys())
+    for s in allcodes:
+        if s == '886043.TI' or s=='885629.TI':
+            #脏数据
+            continue
+        try:
+            file_ct = os.path.join(ct_path, "{}.ct".format(s))
+            if os.path.exists(file_ct):
+                result = {"code": s}
+                result["zhName"] = cachedMembers["N"][s]["name"]
+                ct: CzscTrader = read_pkl(file_ct)
+                if len(ct.bg.bars["日线"]) == 0:
+                    continue
+                cachedDatas[s] = {"zhName": result["zhName"], "ct":ct}
+        except Exception as e:
+            traceback.print_exc()
+            print("{} 执行失败 - {}".format(s, e))
+    pass
+
+getRankTable()
+
+def getPlatesRankDf(smas=[1, 3, 5, 10, 20]):
     columns = ["code", "zhName"]
     for oneSMA in smas:
-        columns.append("SMA"+str(oneSMA))
+        columns.append("SMA" + str(oneSMA))
     df = pd.DataFrame(columns=columns)
     allcodes = list(allPlatesInfo['N'].keys())
     hasPrintTime = False
     for s in allcodes:
+        if s == '886043.TI' or s=='885629.TI':
+            continue
         try:
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct):
-                result = {"code":s}
+                result = {"code": s}
                 result["zhName"] = cachedMembers["N"][s]["name"]
                 ct: CzscTrader = read_pkl(file_ct)
                 if hasPrintTime == False:
                     print("数据截止时间")
                     print(ct.end_dt.strftime("%Y-%m-%d"))
                     hasPrintTime = True
+                if len(ct.bg.bars["日线"]) == 0:
+                    continue
                 close1 = ct.bg.bars["日线"][-1].close
                 for oneSMA in smas:
                     if len(ct.bg.bars["日线"]) < oneSMA:
                         continue
                     close2 = ct.bg.bars["日线"][-oneSMA - 1].close
-                    result[("SMA"+str(oneSMA))] = round((close1 - close2) / close2 * 100, 2)
+                    result[("SMA" + str(oneSMA))] = round((close1 - close2) / close2 * 100, 2)
                 # df = df.append(result, ignore_index=True)
                 df = pd.concat([df, pd.DataFrame.from_records([result])], ignore_index=True)
         except Exception as e:
@@ -122,20 +161,22 @@ def getPlatesRankDf(smas=[1,3,5,10,20]):
             print("{} 执行失败 - {}".format(s, e))
     return df
 
-#股票 -> 概念
+# 股票 -> 概念
 def stockToPlates(stock):
     return relations[relations[stock] == 1].index.tolist()
+
 
 # ss = stockToPlates("文投控股")
 # print("")
 
-#概念 -> 股票
+# 概念 -> 股票
 def plateToStocks(plate):
     relations2 = relations.T
     plateDF = relations2.loc[:, ~relations2.columns.duplicated()]
     return plateDF[plateDF[plate] == 1].index.tolist()
 
-def calculatePlateInsideStock(sma, plateZhName, yuzhi = -100):
+
+def calculatePlateInsideStock(sma, plateZhName, yuzhi=-100):
     stocks = plateToStocks(plateZhName)
     result = {}
     for oneStockZhName in stocks:
@@ -158,9 +199,32 @@ def calculatePlateInsideStock(sma, plateZhName, yuzhi = -100):
             continue
     return sorted(result.items(), key=lambda x: -x[1])
 
+
+def calculateTopStock(dayCount):
+    col = ["标的", "涨跌幅"]
+    df = pd.DataFrame(columns=col)
+    for oneStock in alls['ts_code'].values.tolist():
+        try:
+            print("正在计算" + oneStock)
+            ct_path1 = "/Users/guyeqi/Documents/Python/data/realtime/data"
+            file_ct = os.path.join(ct_path1, "{}.ct".format(oneStock))
+            ct = dill.load(open(file_ct, 'rb'))
+            if len(ct.bg.bars["日线"]) < dayCount:
+                continue
+            result = {}
+            result["标的"] = alls.loc[alls["ts_code"] == oneStock]['name'].iloc[0]
+            close1 = ct.bg.bars["日线"][-1].close
+            close2 = ct.bg.bars["日线"][-dayCount].close
+            priceChange = round((close1 - close2) / close2 * 100, 2)
+            result["涨跌幅"] = priceChange
+            df = pd.concat([df, pd.DataFrame.from_records([result])], ignore_index=True)
+        except:
+            continue
+    sortedInfo = df.sort_values("涨跌幅", inplace=False, ascending=False)
+    return sortedInfo
 # ss = calculatePlateInsideStock(1, "年报预增", yuzhi=5)
 # print(str(ss))
-
+# calculateTopStock(10)
 
 # stockDf = pd.DataFrame(allStocks, columns=['ts_code', 'name'])
 #

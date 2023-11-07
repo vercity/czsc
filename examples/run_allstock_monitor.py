@@ -31,6 +31,8 @@ import numpy as np
 # =======================================================================================================
 # 基础参数配置
 # ct_path = "/Volumes/OuGuMore/Stock/data"
+from examples.collect_datas.run_thsplates_monitor import stockToPlates
+
 ct_path = "/Users/guyeqi/Documents/Python/data/realtime/data"
 os.makedirs(ct_path, exist_ok=True)
 # allName = os.listdir("/Volumes/OuGuMore/Stock/data/")
@@ -74,12 +76,12 @@ events_monitor = [
     #         ]),
     #     ]),
 
-    Event(name="vg潜在一买", operate=Operate.LO, factors=[
-        Factor(name="日线_vg潜在一买", signals_all=[Signal("日线_vg潜在一买_任意_确认_任意_任意_0")]),
-        # Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
-        # Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
-        # Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
-    ]),
+    # Event(name="vg潜在一买", operate=Operate.LO, factors=[
+    #     Factor(name="日线_vg潜在一买", signals_all=[Signal("日线_vg潜在一买_任意_确认_任意_任意_0")]),
+    #     # Factor(name="30分钟_vg潜在一买", signals_all=[Signal("30分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+    #     # Factor(name="60分钟_vg潜在一买", signals_all=[Signal("60分钟_vg潜在一买_任意_确认_任意_任意_0")]),
+    #     # Factor(name="周线_vg潜在一买", signals_all=[Signal("周线_vg潜在一买_任意_确认_任意_任意_0")]),
+    # ]),
 
     Event(name="vg复杂一买反转", operate=Operate.LO, factors=[
         Factor(name="日线_vg复杂一买反转",
@@ -136,16 +138,16 @@ events_monitor = [
                             Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
     ]),
 
-    Event(name="vg简单一买反转TAS", operate=Operate.LO, factors=[
-        Factor(name="日线_vg简单一买反转TAS",
-               signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0"),
-                            Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
-    ]),
-
-    Event(name="vg简单一买反转", operate=Operate.LO, factors=[
-        Factor(name="日线_vg简单一买反转",
-               signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
-    ]),
+    # Event(name="vg简单一买反转TAS", operate=Operate.LO, factors=[
+    #     Factor(name="日线_vg简单一买反转TAS",
+    #            signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0"),
+    #                         Signal("日线_D1N10SMA5_BS1辅助_一买_任意_任意_0")]),
+    # ]),
+    #
+    # Event(name="vg简单一买反转", operate=Operate.LO, factors=[
+    #     Factor(name="日线_vg简单一买反转",
+    #            signals_all=[Signal("日线_vg简单一买_任意_确认_任意_任意_0"), Signal("日线_D1A300_反转V230227_看多_任意_任意_0")]),
+    # ]),
 
     Event(name="vg三买", operate=Operate.LO, factors=[
         Factor(name="日线_60分钟_vg三买", signals_all=[Signal("日线_60分钟_vg三买_确认_任意_任意_0")]),
@@ -211,25 +213,25 @@ def monitor(use_cache=True):
                         msg += "监控提醒：{}@{} [{}]\n".format(event.name, f, ct.s[daoZeroKey])
 
                     if "3根K线" in ct.s[daoZeroKey]:
-                        if f == "日线_vg复杂一买反转":
-                            msg += ct.s["日线_vg复杂一买"] + "\n"
-                            dingmessage("【抄底】\n" + "看下参数\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
-                        if f == "日线_vg简单一买反转":
-                            dingmessage("【抄底】\n" + "6成胜率\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
-                        if f == "日线_vg简单一买反转TAS":
-                            dingmessage("【抄底】\n" + "6.5成胜率\n" +  msg.strip("\n"), shouldAt=True,
-                                        webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
-                        if f == "日线_vg一买反转orTAS":
-                            dingmessage("【抄底】\n" + "7成胜率\n" +  msg.strip("\n"), shouldAt=True,
-                                        webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        # if f == "日线_vg复杂一买反转":
+                        #     msg += ct.s["日线_vg复杂一买"] + "\n"
+                        #     dingmessage("【抄底】\n" + "看下参数\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        # if f == "日线_vg简单一买反转":
+                        #     dingmessage("【抄底】\n" + "6成胜率\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        # if f == "日线_vg简单一买反转TAS":
+                        #     dingmessage("【抄底】\n" + "6.5成胜率\n" +  msg.strip("\n"), shouldAt=True,
+                        #                 webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        # if f == "日线_vg一买反转orTAS":
+                        #     dingmessage("【抄底】\n" + "7成胜率\n" +  msg.strip("\n"), shouldAt=True,
+                        #                 webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
                         if f == "日线_vg一买反转andTAS":
                             dingmessage("【抄底】\n" + "必买！！！！！！！\n必买！！！！！！！\n必买！！！！！！！\n8成胜率\n" +  msg.strip("\n"), shouldAt=True,
                                         webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
-                        if f == "日线_vg一买":
-                            confirm, zhongshu, bipower,score = ct.s[f].split("_")
-                            bi1power, bi2power = bipower.split("-")
-                            if float(bi1power) > float(bi2power):
-                                dingmessage("【抄底】\n" + msg.strip("\n"))
+                        # if f == "日线_vg一买":
+                        #     confirm, zhongshu, bipower,score = ct.s[f].split("_")
+                        #     bi1power, bi2power = bipower.split("-")
+                        #     if float(bi1power) > float(bi2power):
+                        #         dingmessage("【抄底】\n" + msg.strip("\n"))
                         elif f == "日线_60分钟_vg三买确认":
                             dingmessage("【追涨】\n" + msg.strip("\n"))
                         elif f == "日线_60分钟_vg三买":
@@ -272,9 +274,11 @@ def monitor(use_cache=True):
                                 tmpThreeBuyResult = tmpThreeBuyResult.loc[tmpThreeBuyResult['震荡时间'] >= 100]
 
                             isLikeOK = False
-                            if float(huitiao) < 0.35 and int(dao0length) < 9 and int(zhendanglength) > 60 and float(
-                                    dao1power) < 1 and float(dao1power) > 0.5:
+                            if  int(dao0length) < 10 and  int(zhendanglength) > 60:
                                 isLikeOK = True
+                            # if float(huitiao) < 0.35 and int(dao0length) < 9 and int(zhendanglength) > 60 and float(
+                            #         dao1power) < 1 and float(dao1power) > 0.5:
+                            #     isLikeOK = True
 
                             if isLikeOK:
                                 dingMSG = '【追涨-还可以】\n'
@@ -288,30 +292,31 @@ def monitor(use_cache=True):
                             dingMSG += "回调幅度：{} \n".format(
                                 str(huitiao).split('.')[0] + '.' + str(huitiao).split('.')[1][:2])
                             dingMSG += "震荡时间：{} \n".format(str(zhendanglength))
-                            if tmpThreeBuyResult.empty == False:
-                                dingMSG += "相似形态个数：{}\n".format(str(tmpThreeBuyResult.shape[0]))
-                                dingMSG += "【平均】 "
-                                dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format(
-                                    round(np.nanmean(tmpThreeBuyResult['n1b']), 2), round(np.nanmean(tmpThreeBuyResult['n2b']), 2),
-                                    round(np.nanmean(tmpThreeBuyResult['n3b']), 2), round(np.nanmean(tmpThreeBuyResult['n5b']), 2),
-                                    round(np.nanmean(tmpThreeBuyResult['n8b']), 2), round(np.nanmean(tmpThreeBuyResult['n13b']), 2),
-                                    round(np.nanmean(tmpThreeBuyResult['n21b']), 2))
-                                dingMSG += "【中位数】 "
-                                dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format(
-                                    round(np.median(tmpThreeBuyResult['n1b']), 2), round(np.median(tmpThreeBuyResult['n2b']), 2),
-                                    round(np.median(tmpThreeBuyResult['n3b']), 2), round(np.median(tmpThreeBuyResult['n5b']), 2),
-                                    round(np.median(tmpThreeBuyResult['n8b']), 2), round(np.median(tmpThreeBuyResult['n13b']), 2),
-                                    round(np.median(tmpThreeBuyResult['n21b']), 2))
-                                dingMSG += "【胜率】 "
-                                dingMSG += "n1b: {}% | n2b: {}%  | n3b: {}%  | n5b: {}%  | n8b: {}%  | n13b: {}%  | n21b: {}%\n".format(
-                                    round(tmpThreeBuyResult['n1b'][tmpThreeBuyResult['n1b'] > 0].count() / tmpThreeBuyResult['n1b'].count() * 100, 2), round(tmpThreeBuyResult['n2b'][tmpThreeBuyResult['n2b'] > 0].count() / tmpThreeBuyResult['n2b'].count() * 100, 2),
-                                    round(tmpThreeBuyResult['n3b'][tmpThreeBuyResult['n3b'] > 0].count() / tmpThreeBuyResult['n3b'].count() * 100, 2), round(tmpThreeBuyResult['n5b'][tmpThreeBuyResult['n5b'] > 0].count() / tmpThreeBuyResult['n5b'].count() * 100, 2),
-                                    round(tmpThreeBuyResult['n8b'][tmpThreeBuyResult['n8b'] > 0].count() / tmpThreeBuyResult['n8b'].count() * 100, 2), round(tmpThreeBuyResult['n13b'][tmpThreeBuyResult['n13b'] > 0].count() / tmpThreeBuyResult['n13b'].count() * 100, 2),
-                                    round(tmpThreeBuyResult['n21b'][tmpThreeBuyResult['n21b'] > 0].count() / tmpThreeBuyResult['n21b'].count() * 100, 2))
-                                for i, row in tmpThreeBuyResult.iterrows():
-                                    dingMSG += f"【参考标的】：{stockDf.loc[stockDf['ts_code'] == row['ts_code']]['name'].values[0]}， 代码： " + row['ts_code'] + "， 时间：" + row['trade_date'] + '\n'
-                                    dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format((str(row['n1b']).split('.')[0] + '.' + str(row['n1b']).split('.')[1][:2]),(str(row['n2b']).split('.')[0] + '.' + str(row['n2b']).split('.')[1][:2]),(str(row['n3b']).split('.')[0] + '.' + str(row['n3b']).split('.')[1][:2]),(str(row['n5b']).split('.')[0] + '.' + str(row['n5b']).split('.')[1][:2]),(str(row['n8b']).split('.')[0] + '.' + str(row['n8b']).split('.')[1][:2]),(str(row['n13b']).split('.')[0] + '.' + str(row['n13b']).split('.')[1][:2]),(str(row['n21b']).split('.')[0] + '.' + str(row['n21b']).split('.')[1][:2]))
-                                print(dingMSG)
+                            dingMSG += "概念：{}\n".format(str(stockToPlates(stockDf.loc[stockDf['ts_code'] == s]['name'].values[0])))
+                            # if tmpThreeBuyResult.empty == False:
+                            #     dingMSG += "相似形态个数：{}\n".format(str(tmpThreeBuyResult.shape[0]))
+                            #     dingMSG += "【平均】 "
+                            #     dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format(
+                            #         round(np.nanmean(tmpThreeBuyResult['n1b']), 2), round(np.nanmean(tmpThreeBuyResult['n2b']), 2),
+                            #         round(np.nanmean(tmpThreeBuyResult['n3b']), 2), round(np.nanmean(tmpThreeBuyResult['n5b']), 2),
+                            #         round(np.nanmean(tmpThreeBuyResult['n8b']), 2), round(np.nanmean(tmpThreeBuyResult['n13b']), 2),
+                            #         round(np.nanmean(tmpThreeBuyResult['n21b']), 2))
+                            #     dingMSG += "【中位数】 "
+                            #     dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format(
+                            #         round(np.median(tmpThreeBuyResult['n1b']), 2), round(np.median(tmpThreeBuyResult['n2b']), 2),
+                            #         round(np.median(tmpThreeBuyResult['n3b']), 2), round(np.median(tmpThreeBuyResult['n5b']), 2),
+                            #         round(np.median(tmpThreeBuyResult['n8b']), 2), round(np.median(tmpThreeBuyResult['n13b']), 2),
+                            #         round(np.median(tmpThreeBuyResult['n21b']), 2))
+                            #     dingMSG += "【胜率】 "
+                            #     dingMSG += "n1b: {}% | n2b: {}%  | n3b: {}%  | n5b: {}%  | n8b: {}%  | n13b: {}%  | n21b: {}%\n".format(
+                            #         round(tmpThreeBuyResult['n1b'][tmpThreeBuyResult['n1b'] > 0].count() / tmpThreeBuyResult['n1b'].count() * 100, 2), round(tmpThreeBuyResult['n2b'][tmpThreeBuyResult['n2b'] > 0].count() / tmpThreeBuyResult['n2b'].count() * 100, 2),
+                            #         round(tmpThreeBuyResult['n3b'][tmpThreeBuyResult['n3b'] > 0].count() / tmpThreeBuyResult['n3b'].count() * 100, 2), round(tmpThreeBuyResult['n5b'][tmpThreeBuyResult['n5b'] > 0].count() / tmpThreeBuyResult['n5b'].count() * 100, 2),
+                            #         round(tmpThreeBuyResult['n8b'][tmpThreeBuyResult['n8b'] > 0].count() / tmpThreeBuyResult['n8b'].count() * 100, 2), round(tmpThreeBuyResult['n13b'][tmpThreeBuyResult['n13b'] > 0].count() / tmpThreeBuyResult['n13b'].count() * 100, 2),
+                            #         round(tmpThreeBuyResult['n21b'][tmpThreeBuyResult['n21b'] > 0].count() / tmpThreeBuyResult['n21b'].count() * 100, 2))
+                            #     for i, row in tmpThreeBuyResult.iterrows():
+                            #         dingMSG += f"【参考标的】：{stockDf.loc[stockDf['ts_code'] == row['ts_code']]['name'].values[0]}， 代码： " + row['ts_code'] + "， 时间：" + row['trade_date'] + '\n'
+                            #         dingMSG += "n1b: {} | n2b: {}  | n3b: {}  | n5b: {}  | n8b: {}  | n13b: {}  | n21b: {}\n".format((str(row['n1b']).split('.')[0] + '.' + str(row['n1b']).split('.')[1][:2]),(str(row['n2b']).split('.')[0] + '.' + str(row['n2b']).split('.')[1][:2]),(str(row['n3b']).split('.')[0] + '.' + str(row['n3b']).split('.')[1][:2]),(str(row['n5b']).split('.')[0] + '.' + str(row['n5b']).split('.')[1][:2]),(str(row['n8b']).split('.')[0] + '.' + str(row['n8b']).split('.')[1][:2]),(str(row['n13b']).split('.')[0] + '.' + str(row['n13b']).split('.')[1][:2]),(str(row['n21b']).split('.')[0] + '.' + str(row['n21b']).split('.')[1][:2]))
+                            #     print(dingMSG)
                             if isLikeOK:
                                 dingmessage(dingMSG, shouldAt=isLikeOK)
             print(msg)

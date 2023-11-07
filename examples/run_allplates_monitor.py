@@ -10,6 +10,9 @@ import traceback
 import time
 import shutil
 import os
+import sys
+
+sys.path.append("/Users/guyeqi/Documents/Python/czsc")
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from czsc.data.ts import freq_cn_map, dt_fmt, get_all_stocks, get_all_plates, get_ths_daily
@@ -173,6 +176,32 @@ def monitor(use_cache=True):
                         msg += "监控提醒：{}@{} [{}], {}\n".format(event.name, f, ct.s[daoZeroKey], ct.s[f])
                     else:
                         msg += "监控提醒：{}@{} [{}]\n".format(event.name, f, ct.s[daoZeroKey])
+
+                    if "3根K线" in ct.s[daoZeroKey]:
+                        if f == "日线_vg复杂一买反转":
+                            dingmessage("【抄底】\n" + "看下参数\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg简单一买反转":
+                            dingmessage("【抄底】\n" + "6成胜率\n" + msg.strip("\n"), shouldAt=False, webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg简单一买反转TAS":
+                            dingmessage("【抄底】\n" + "6.5成胜率\n" +  msg.strip("\n"), shouldAt=True,
+                                        webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg一买反转orTAS":
+                            dingmessage("【抄底】\n" + "7成胜率\n" +  msg.strip("\n"), shouldAt=True,
+                                        webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg一买反转andTAS":
+                            dingmessage("【抄底】\n" + "必买！！！！！！！\n必买！！！！！！！\n必买！！！！！！！\n8成胜率\n" +  msg.strip("\n"), shouldAt=True,
+                                        webhook="https://oapi.dingtalk.com/robot/send?access_token=3571c54ee105cd3dc3a913b0ea97d3a6fd50809fe3f013a6c5e5903f847e341c")
+                        if f == "日线_vg一买":
+                            confirm, zhongshu, bipower,score = ct.s[f].split("_")
+                            bi1power, bi2power = bipower.split("-")
+                            if float(bi1power) > float(bi2power):
+                                dingmessage("【抄底】\n" + msg.strip("\n"))
+                        elif f == "日线_60分钟_vg三买确认":
+                            dingmessage("【追涨】\n" + msg.strip("\n"))
+                        elif f == "日线_60分钟_vg三买":
+                            confirm, huitiao, dao0length, zhendanglength, dao1power = ct.s[f].split("_")
+                            if float(huitiao) < 0.35 and int(dao0length) < 10 and int(zhendanglength) > 39 and float(dao1power) < 1:
+                                dingmessage("【追涨】\n" + msg.strip("\n"))
             print(msg)
             # if "监控提醒" in msg:
             #     dingmessage(msg.strip("\n"))
